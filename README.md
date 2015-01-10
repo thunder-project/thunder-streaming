@@ -1,6 +1,6 @@
 # Thunder streaming
 
-Streaming analysis of large-scale spatial temporal neural data. 
+Streaming analysis of large-scale spatial and temporal neural data. 
 
 Built on [Spark Streaming](https://spark.apache.org/streaming/). Companion to [Thunder](http://thunder-project.org).
 
