@@ -1,0 +1,9 @@
+$ cat .gitignore
+*.pyc
+.idea
+.idea_modules
+.DS_Store
+thunder.iml
+project/project
+project/target
+target*
