@@ -3,7 +3,7 @@ $ cat .gitignore
 .idea
 .idea_modules
 .DS_Store
-thunder.iml
+*.iml
 project/project
 project/target
 target*
