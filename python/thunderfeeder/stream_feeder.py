@@ -1,4 +1,15 @@
 #!/usr/bin/env python
+"""Basic example of feeding files into a directory being watched by spark streaming.
+
+This script will monitor a directory tree passed as a argument. When new files are added inside this tree
+(provided that they are lexicographically later than the last file fed into the stream - see updating_walk.py)
+they will be first copied into a temporary directory, then moved into the passed output directory. After a specified
+lag time, they will be automatically deleted from the output directory.
+
+The temporary directory must be on the same filesystem as the output directory, or else errors will likely be
+thrown by os.rename. The root of the temporary directory tree can be set on most linux systems by the TMP environment
+variable.
+"""
 import errno
 import logging
 import os
@@ -11,15 +22,48 @@ from updating_walk import updating_walk as uw
 
 
 class Feeder(object):
+    """Superclass for objects that take in a set of filenames and push the corresponding files out
+    to a consumer.
+    """
     def feed(self, filenames):
+        """Abstract method that when called, pushes the passed files out to a consumer.
+
+        Implementations should return a list of the filenames that have been successfully pushed out
+        to the consumer. This may be a subset of those passed in the feed() call.
+        """
         raise NotImplementedError
 
     def clean(self):
-        pass
+        """Performs any required cleanup, such as deleting copied files.
+
+        Implementations should ensure that any cleanup actions are safe to perform (e.g. the ultimate
+        consumer has already consumed the files). If there are no safe cleanup actions, this method should
+        return. Future calls may result in cleanup actions being performed.
+
+        Implementations should return a list of filenames that are deleted by the clean() action.
+
+        This implementation does nothing.
+        """
+        return []
 
 
 class LastModifiedCleaner(Feeder):
+    """Abstract subclass of Feeder that provides a "delete after delay" clean() method.
+    """
     def __init__(self, feeder_dir, linger_time):
+        """
+        Specifies a directory and a delay time after which files found in the directory are to be deleted.
+
+        The delay time is measured from the file's last modification time.
+
+        Parameters
+        ----------
+        feeder_dir: string
+            Path to directory from which files are to be deleted.
+        linger_time: float
+            Time in seconds.
+        :return:
+        """
         self.feeder_dir = str(feeder_dir)
         self.linger_time = float(linger_time)
 
@@ -27,6 +71,8 @@ class LastModifiedCleaner(Feeder):
             raise ValueError("Feeder directory must be an existing directory path; got '%s'" % self.feeder_dir)
 
     def clean(self):
+        """Deletes files found in self.feeder_dir whose last modified time is longer ago than self.linger_time.
+        """
         if self.linger_time < 0:
             return []
         now = time.time()
@@ -41,6 +87,14 @@ class LastModifiedCleaner(Feeder):
 
 
 class CopyAndMoveFeeder(LastModifiedCleaner):
+    """Concrete feeder implementation that copies files into the specified output directory.
+
+    This first copies files into a temporary directory, which should be on the same filesystem
+    as the ultimate output directory. (This can be controlled by the TMP environment var - see documentation
+    in the python tempfile module.) After this copy, the files are moved into the final output directory
+    by an os.rename() call, which advertises that it will be an atomic operation for files on the same filesystem.
+    This rename() call may throw an exception if the temp directory is on a different filesystem.
+    """
     @classmethod
     def fromOptions(cls, opts):
         return cls(opts.outdir, opts.linger_time)
@@ -87,6 +141,11 @@ def parse_options():
 
 
 def file_check_generator(source_dir, mod_buffer_time):
+    """Generator function that polls the passed directory tree for new files, using the updating_walk.py logic.
+
+    This generator will restart the underlying updating_walk at the last seen file if the updating walk runs
+    out of available files.
+    """
     next_batch_file, walker_restart_file = None, None
     walker = uw(source_dir)
     while True:
@@ -111,7 +170,10 @@ def file_check_generator(source_dir, mod_buffer_time):
 
 
 def runloop(source_dir_or_dirs, feeder, poll_time, mod_buffer_time):
-
+    """ Main program loop. This will check for new files in the passed input directories using file_check_generator,
+    push any new files found into the passed Feeder subclass via its feed() method, wait for poll_time,
+    and repeat forever.
+    """
     if isinstance(source_dir_or_dirs, basestring):
         source_dirs = [source_dir_or_dirs]
     else:

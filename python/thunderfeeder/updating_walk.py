@@ -3,13 +3,37 @@
 Provides a generator similar to os.walk, with the following differences:
 * fully-qualified filenames are returned instead of tuples
 * entries within a directory are traversed in lexicographic order
-* new files that are lexicographically later than the last-returned entry will be picked up
+* files created during the iteration will be picked up, provided they are lexicographically later than
+the last-yielded filename.
+
+If this file is run as a script, it will print out filenames found in a traversal. Usage is:
+python updating_walk.py path_to_directory [time_per_update [start_filename]]
 """
 import operator
 import os
 
 
 def updating_walk(dirpath, startpath=None):
+    """Generator function that yields filenames located underneath dirpath.
+
+    Unlike os.walk or os.path.walk, this function will detect files that are created after the initial
+    call to the generator.
+
+    Directories will be walked depth-first.
+
+    Parameters
+    ----------
+    dirpath: string
+        Path to an existing directory to serve as the root of the traversal.
+
+    startpath: string, optional, default None
+        If passed, specifies a path underneath dirpath from which to begin the traversal. Paths
+        lexicographically earlier than startpath will be ignored.
+
+    Yields
+    ------
+    string absolute path to next file in traversal.
+    """
     # TODO: does not currently correctly handle nesting more that 1 level deep
     isdir, isfile, join, listdir = os.path.isdir, os.path.isfile, os.path.join, os.listdir
     abspath, basename, commonprefix = os.path.abspath, os.path.basename, os.path.commonprefix
@@ -32,9 +56,6 @@ def updating_walk(dirpath, startpath=None):
     lastfile = None
     if startpath:
         common = commonprefix([abspath(dirpath), abspath(startpath)])
-        # if normpath(common) != normpath(dirpath):
-        #     raise ValueError("If passed, startpath must be rooted at dirpath. Got dirpath, startpath: (%s, %s)" %
-        #                      (dirpath, startpath))
         if normpath(common) == normpath(dirpath):
             startsubpath = relpath(startpath, dirpath)
             if isdir(startpath):

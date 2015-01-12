@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-"""
+"""An elaboration on grouping_stream_feeder, which transposes matching file pairs into the Thunder series binary
+format instead of just copying them as-is.
+
 Expected usage: something like:
  ./grouping_series_stream_feeder.py \
  /mnt/data/data/from_nick/demo_2015_01_09/registered_im/ \
@@ -8,11 +10,28 @@ Expected usage: something like:
  -l -1.0 --imgprefix images --behavprefix behaviour --shape 512 512 4
 
  Set TMP environment var to same filesystem as output directory (here /mnt/tmpram/)
- so as to ensure that os.rename step is atomic.
+ so as to ensure that os.rename step is atomic - see stream_feeder.py.
 
 Behavioral vars will be represented as an extra, incomplete 'z' dimension
 Regular image data can be extracted in thunder as something like the following:
 imgseries = series.filterOnKeys(lambda (x, y, z): z < 4)
+
+If a --shape parameter is passed to the script, the resulting output files will have x,y,z subscript indices
+added to match the specified shape. If no shape is passed, then the output will not have any index set (not even
+a linear index). (It is not clear (to me) whether data without any index could be read as a Series by Thunder...)
+
+This script expects input binary data to be written with contigous z-planes. So for instance,
+if input data is in the expected format, the following should yield a sensible image:
+
+import numpy as np
+import pylab as p
+rawim = np.fromfile("path/to/flat/binary/file.bin", dtype="data-dtype")
+rawim.shape = (zdim, ydim, xdim)
+p.imshow(rawim[zplane])
+p.show()
+
+Given data in this format, the script should be called with --shape xdim ydim zdim, with dimensions
+specified in x, y, z order. (This is consistent with the behavior of the rest of Thunder.)
 
 """
 import logging
@@ -28,6 +47,15 @@ from grouping_stream_feeder import SyncCopyAndMoveFeeder
 
 
 def transpose_files(filenames, outfp, dtype='uint16'):
+    """Rewrites the flat binary files whose names are given in 'filenames' into a single flat binary
+    output file.
+
+    The first element in the output will be the first element of the first passed file. The second element
+    will be the first element of the second file, up to the Nth element for N passed filenames. The N+1st
+    element in the output file will be the second element of the first passed file, and so on.
+
+    This corresponds to a Thunder binary series file, except without keys.
+    """
     outbuf = None
     nfiles = len(filenames)
     ary_size = 0
@@ -44,6 +72,14 @@ def transpose_files(filenames, outfp, dtype='uint16'):
 
 
 def transpose_files_to_series(filenames, outfp, shape, dtype='uint16', startlinidx=0):
+    """Rewrites the flat binary files whose names are given in 'filenames' into a valid Thunder binary series
+    file, including keys.
+
+    'startlinidx' gives the linear index of the first element to be written out in this call. By setting
+    startlinidx = prod(shape), this allows subscript indices to be written that are greater than fit into the
+    specified shape. This is expected to be useful in appending behavioral regressor data at the end of an
+    otherwise valid image series.
+    """
     outbuf = None
     nfiles = len(filenames)
     ndim = len(shape)
@@ -60,10 +96,8 @@ def transpose_files_to_series(filenames, outfp, shape, dtype='uint16', startlini
     # check whether we are about to exceed the allowable range for the array size
     while (startlinidx + ary.size) >= np.prod(shape):
         shape = list(shape[:-1]) + [shape[-1] + 1]  # keep adding 1 to last (z) dimension until we're ok
-        # shape = [shape[0] + 1] + list(shape[1:])  # keep adding 1 to first (z) dimension until we're ok
 
     subidxarys = np.unravel_index(np.arange(startlinidx, startlinidx + ary.size, dtype='uint32'), shape, order='F')
-    # subidxarys = np.unravel_index(np.arange(startlinidx, startlinidx + ary.size, dtype='uint32'), shape, order='C')
     for subidx, subidxary in enumerate(subidxarys):
         outbuf[subidx::incr] = subidxary
     if outbuf is not None:
@@ -72,34 +106,22 @@ def transpose_files_to_series(filenames, outfp, shape, dtype='uint16', startlini
 
 
 class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
+    """A Feeder implementation that looks for matching pairs of files, as in SyncCopyAndMoveFeeder, and
+    them writes out these matching pairs as a single Series binary file.
+
+    Expected file prefixes must be given at object construction. The Series data will be written out
+    in the order given by this prefixes argument - so for instance in order to write out behavioral data
+    after imaging data in the Series binary file output, prefixes should be specified as (imagefileprefix,
+    behaviorfileprefix), and not the other way around.
+
+    If a shape tuple is given at construction, then the output will have valid subscript indices according
+    to this expected shape. See transpose_files() (no shape passed) and transpose_files_to_series() (with shape).
+    """
     def __init__(self, feeder_dir, linger_time, prefixes, prefix_delim='_', shape=None, dtype='uint16'):
         super(SyncSeriesFeeder, self).__init__(feeder_dir, linger_time, prefixes, prefix_delim=prefix_delim)
         self.prefixes = list(prefixes)
         self.shape = shape
         self.dtype = dtype
-
-    def get_matching_first_entry(self):
-        """Pops and returns the first entry across all queues if the first entry
-        is the same on all queues, otherwise return None and leave queues unchanged
-        """
-        matched = None
-        try:
-            for queue in self.file_prefix_to_queue.itervalues():
-                first = queue[0]
-                if matched:
-                    if not first == matched:
-                        matched = None
-                        break
-                else:
-                    matched = first
-        except IndexError:
-            # don't have anything in at least one queue
-            matched = None
-
-        if matched is not None:
-            for queue in self.file_prefix_to_queue.itervalues():
-                queue.popleft()
-        return matched
 
     @staticmethod
     def get_series_filename(srcfilenames, tmpseriesfilename):

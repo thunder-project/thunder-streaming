@@ -1,4 +1,18 @@
 #!/usr/bin/env python
+"""An elaboration on stream_feeder that watches for pairs of files with matching suffixes. Only when a matching
+pair is found will both files be moved into the output directory.
+
+When run as a script, this file expects to find matching files in two separate directory trees. These files are
+assumed to represent imaging and behavioral data from the same point in time.
+
+Files are matched based on having identical suffixes after the first appearance of a delimiter character '_', excluding
+filename extensions. So 'foo_abc.txt' and 'bar_abc' match, but 'foo_123' and 'bar_124' do not.
+
+Note that this script will block forever waiting for a match. So for instance given files a_01, a_02, a_03, b_01, and
+b_03, after moving the a_01 b_01 pair it will block waiting for a b_02 to show up.
+
+"""
+
 import logging
 import os
 import sys
@@ -13,7 +27,7 @@ from stream_feeder import runloop, _logger, CopyAndMoveFeeder
 
 def unique_justseen(iterable, key=None):
     """List unique elements, preserving order. Remember only the element just seen.
-    from python itertools recipes
+    Taken from python itertools recipes.
     """
     # unique_justseen('AAAABBBCCDAABBB') --> A B C D A B
     # unique_justseen('ABBCcAD', str.lower) --> A B C A D
@@ -32,6 +46,15 @@ def is_sorted(iterable, key=lambda a, b: a < b):
 
 
 class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
+    """This feeder will wait for matching pairs of files, as described in the module docstring,
+    before copying the pair into the passed output directory. Its behavior is otherwise the
+    same as CopyAndMoveFeeder.
+
+    Filenames that are not immediately matched on a first call to feed() are stored in internal queues,
+    to be checked on the next feed() call. The internal queues are sorted alphabetically by file name, and
+    at each feed() call only the head of the queue is checked for a possible match. This can lead to
+    waiting forever for a match for one particular file, as described in the module docstring.
+    """
     def __init__(self, feeder_dir, linger_time, prefixes, prefix_delim='_'):
         super(SyncCopyAndMoveFeeder, self).__init__(feeder_dir=feeder_dir, linger_time=linger_time)
         self.prefix_delim = prefix_delim
@@ -80,6 +103,9 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         return matched
 
     def match_filenames(self, filenames):
+        """Update internal queues with passed filenames. Returns names that match across the head of all queues if
+        any are found, or an empty list otherwise.
+        """
         # insert
         # we assume that usually we'll just be appending to the end - other options
         # include heapq and bisect, but it probably doesn't really matter
