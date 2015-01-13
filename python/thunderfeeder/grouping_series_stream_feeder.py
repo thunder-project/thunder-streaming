@@ -124,10 +124,9 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
         self.dtype = dtype
 
     @staticmethod
-    def get_series_filename(srcfilenames, tmpseriesfilename):
+    def get_series_filename(srcfilenames, bytesize):
         startcount = SyncCopyAndMoveFeeder.getFilenamePostfix(srcfilenames[0], '_')
         endcount = SyncCopyAndMoveFeeder.getFilenamePostfix(srcfilenames[-1], '_')
-        bytesize = os.path.getsize(tmpseriesfilename)
         return "series-%s-%s_bytes%d.bin" % (startcount, endcount, bytesize)
 
     def feed(self, filenames):
@@ -138,9 +137,11 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
             tmpfp = os.fdopen(tmpfd, 'w')
             try:
                 nindices_written = 0
+                ninput_files = 0
                 for prefix in self.prefixes:
                     curnames = [fn for fn in fullnames if os.path.basename(fn).startswith(prefix)]
                     curnames.sort()
+                    ninput_files = len(curnames)  # should be same for all prefixes
                     if self.shape is None:
                         nindices_written += transpose_files(curnames, tmpfp, dtype=self.dtype)
                     else:
@@ -148,7 +149,13 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
                                                                       dtype=self.dtype, startlinidx=nindices_written)
                 tmpfp.close()
 
-                newname = SyncSeriesFeeder.get_series_filename(filenames, tmpfname)
+                record_vals_size = ninput_files * np.dtype(self.dtype).itemsize
+                if self.shape:
+                    recordsize = len(self.shape)*2 + record_vals_size  # key size in bytes + values size in bytes
+                else:
+                    recordsize = record_vals_size
+                newname = SyncSeriesFeeder.get_series_filename(filenames, recordsize)
+
                 # touch prior to atomic move operation to delay slurping by spark
                 os.utime(tmpfname, None)
                 os.rename(tmpfname, os.path.join(self.feeder_dir, newname))
