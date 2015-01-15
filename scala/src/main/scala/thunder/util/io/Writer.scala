@@ -36,11 +36,13 @@ abstract class Writer {
 
   def withKeys(data: DStream[(Int, Array[Double])], directory: String, fileName: Seq[String]) {
     data.foreachRDD{rdd =>
-      val sorted = rdd.sortByKey().values
-      val n = sorted.first().size
-      val dateString = Calendar.getInstance().getTime.toString.replace(" ", "-").replace(":", "-")
-      for (i <- 0 until n) {
-        write(sorted.map(x => x(i)), directory ++ File.separator ++ fileName(i) ++ "-" ++ dateString)
+      if (rdd.count() > 0) {
+        val sorted = rdd.sortByKey().values
+        val n = sorted.first().size
+        val dateString = Calendar.getInstance().getTime.toString.replace(" ", "-").replace(":", "-")
+        for (i <- 0 until n) {
+          write(sorted.map(x => x(i)), directory ++ File.separator ++ fileName(i) ++ "-" ++ dateString)
+        }
       }
     }
   }
