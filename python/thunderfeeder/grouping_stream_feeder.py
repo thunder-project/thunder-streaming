@@ -45,6 +45,22 @@ def is_sorted(iterable, key=lambda a, b: a < b):
     return all(key(a, b) for a, b in pairwise(iterable))
 
 
+def getFilenamePrefix(filename, delim='_'):
+    return getFilenamePrefixAndPostfix(filename, delim)[0]
+
+
+def getFilenamePostfix(filename, delim='_'):
+    return getFilenamePrefixAndPostfix(filename, delim)[1]
+
+
+def getFilenamePrefixAndPostfix(filename, delim='_'):
+    bname = os.path.splitext(os.path.basename(filename))[0]
+    splits = bname.split(delim, 1)
+    prefix = splits[0]
+    postfix = splits[1] if len(splits) > 1 else ''
+    return prefix, postfix
+
+
 class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
     """This feeder will wait for matching pairs of files, as described in the module docstring,
     before copying the pair into the passed output directory. Its behavior is otherwise the
@@ -55,29 +71,16 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
     at each feed() call only the head of the queue is checked for a possible match. This can lead to
     waiting forever for a match for one particular file, as described in the module docstring.
     """
-    def __init__(self, feeder_dir, linger_time, prefixes, prefix_delim='_'):
+    def __init__(self, feeder_dir, linger_time, qnames,
+                 fname_to_qname_fcn=getFilenamePrefix,
+                 fname_to_timepoint_fcn=getFilenamePostfix):
         super(SyncCopyAndMoveFeeder, self).__init__(feeder_dir=feeder_dir, linger_time=linger_time)
-        self.prefix_delim = prefix_delim
-        self.file_prefix_to_queue = {}
-        for prefix in prefixes:
-            self.file_prefix_to_queue[prefix] = deque()
+        self.qname_to_queue = {}
+        for qname in qnames:
+            self.qname_to_queue[qname] = deque()
         self.keys_to_fullnames = {}
-
-    @staticmethod
-    def getFilenamePrefix(filename, delim):
-        return SyncCopyAndMoveFeeder.getFilenamePrefixAndPostfix(filename, delim)[0]
-
-    @staticmethod
-    def getFilenamePostfix(filename, delim):
-        return SyncCopyAndMoveFeeder.getFilenamePrefixAndPostfix(filename, delim)[1]
-
-    @staticmethod
-    def getFilenamePrefixAndPostfix(filename, delim):
-        bname = os.path.splitext(os.path.basename(filename))[0]
-        splits = bname.split(delim, 1)
-        prefix = splits[0]
-        postfix = splits[1] if len(splits) > 1 else ''
-        return prefix, postfix
+        self.fname_to_qname_fcn = fname_to_qname_fcn
+        self.fname_to_timepoint_fcn = fname_to_timepoint_fcn
 
     def get_matching_first_entry(self):
         """Pops and returns the first entry across all queues if the first entry
@@ -85,7 +88,7 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         """
         matched = None
         try:
-            for queue in self.file_prefix_to_queue.itervalues():
+            for queue in self.qname_to_queue.itervalues():
                 first = queue[0]
                 if matched:
                     if not first == matched:
@@ -98,7 +101,7 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
             matched = None
 
         if matched is not None:
-            for queue in self.file_prefix_to_queue.itervalues():
+            for queue in self.qname_to_queue.itervalues():
                 queue.popleft()
         return matched
 
@@ -110,14 +113,15 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         # we assume that usually we'll just be appending to the end - other options
         # include heapq and bisect, but it probably doesn't really matter
         for filename in filenames:
-            prefix, postfix = SyncCopyAndMoveFeeder.getFilenamePrefixAndPostfix(filename, self.prefix_delim)
-            self.file_prefix_to_queue[prefix].append(postfix)
-            self.keys_to_fullnames[(prefix, postfix)] = filename
+            qname = self.fname_to_qname_fcn(filename)
+            tpname = self.fname_to_timepoint_fcn(filename)
+            self.qname_to_queue[qname].append(tpname)
+            self.keys_to_fullnames[(qname, tpname)] = filename
 
         # maintain sorting and dedup:
-        for prefix, queue in self.file_prefix_to_queue.iteritems():
+        for qname, queue in self.qname_to_queue.iteritems():
             if not is_sorted(queue):
-                self.file_prefix_to_queue[prefix] = deque(unique_justseen(sorted(list(queue))))
+                self.qname_to_queue[qname] = deque(unique_justseen(sorted(list(queue))))
 
         # all queues are now sorted and unique-ified
 
@@ -130,7 +134,7 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
             matching = self.get_matching_first_entry()
 
         # convert matches back to full filenames
-        fullnamekeys = list(iproduct(self.file_prefix_to_queue.iterkeys(), matches))
+        fullnamekeys = list(iproduct(self.qname_to_queue.iterkeys(), matches))
         fullnames = [self.keys_to_fullnames.pop(key) for key in fullnamekeys]
         fullnames.sort()
         return fullnames

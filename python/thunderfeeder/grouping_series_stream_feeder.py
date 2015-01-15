@@ -43,7 +43,7 @@ import tempfile
 import numpy as np
 
 from stream_feeder import runloop, _logger
-from grouping_stream_feeder import SyncCopyAndMoveFeeder
+from grouping_stream_feeder import SyncCopyAndMoveFeeder, getFilenamePrefix, getFilenamePostfix
 
 
 def transpose_files(filenames, outfp, dtype='uint16'):
@@ -71,7 +71,21 @@ def transpose_files(filenames, outfp, dtype='uint16'):
     return ary_size  # number of distinct indices written
 
 
-def transpose_files_to_series(filenames, outfp, shape, dtype='uint16', startlinidx=0):
+def _write_series_records(filenames, ndim=1, dtype='uint16', indtype='uint16'):
+    outbuf = None
+    ary_size = 0
+    incr = len(filenames) + ndim
+    for fnidx, fn in enumerate(filenames):
+        ary = np.fromfile(fn, dtype=indtype).astype(dtype)
+        if outbuf is None:
+            ary_size = ary.size
+            totsize = ary_size * incr  # (nelts per image * (n images + ndim))
+            outbuf = np.empty((totsize,), dtype=dtype)
+        outbuf[(fnidx+ndim)::incr] = ary
+    return outbuf, ary_size
+
+
+def transpose_files_to_series(filenames, outfp, shape, dtype='uint16', indtype='uint16', startlinidx=0):
     """Rewrites the flat binary files whose names are given in 'filenames' into a valid Thunder binary series
     file, including keys.
 
@@ -80,27 +94,40 @@ def transpose_files_to_series(filenames, outfp, shape, dtype='uint16', startlini
     specified shape. This is expected to be useful in appending behavioral regressor data at the end of an
     otherwise valid image series.
     """
-    outbuf = None
     nfiles = len(filenames)
-    ndim = len(shape)
     incr = nfiles + len(shape)
-    ary_size = 0
-    for fnidx, fn in enumerate(filenames):
-        ary = np.fromfile(fn, dtype=dtype)
-        if outbuf is None:
-            ary_size = ary.size
-            totsize = ary_size * incr  # (nelts per image * (n images + ndim))
-            outbuf = np.empty((totsize,), dtype=dtype)
-        outbuf[(fnidx+ndim)::incr] = ary
+    outbuf, ary_size = _write_series_records(filenames, ndim=len(shape), dtype=dtype, indtype=indtype)
 
     # check whether we are about to exceed the allowable range for the array size
-    while (startlinidx + ary.size) >= np.prod(shape):
+    while (startlinidx + ary_size) >= np.prod(shape):
         shape = list(shape[:-1]) + [shape[-1] + 1]  # keep adding 1 to last (z) dimension until we're ok
 
-    subidxarys = np.unravel_index(np.arange(startlinidx, startlinidx + ary.size, dtype='uint32'), shape, order='F')
+    subidxarys = np.unravel_index(np.arange(startlinidx, startlinidx + ary_size,
+                                            dtype=np.uint32), shape, order='F')
     for subidx, subidxary in enumerate(subidxarys):
         outbuf[subidx::incr] = subidxary
     if outbuf is not None:
+        outbuf.tofile(outfp)
+    return ary_size
+
+
+def transpose_files_to_linear_series(filenames, outfp, dtype='uint32', indtype='uint16', startlinidx=0):
+    """Rewrites the flat binary files whose names are given in 'filenames' into a valid Thunder binary series
+    file, including linear keys.
+    """
+    nfiles = len(filenames)
+    incr = nfiles + 1
+    outbuf, ary_size = _write_series_records(filenames, ndim=1, dtype=dtype, indtype=indtype)
+
+    ddtype = np.dtype(dtype)
+    maxval = np.iinfo(ddtype).max if ddtype.kind in ('i', 'u') else np.finfo(ddtype).max
+    if startlinidx + ary_size >= maxval:
+        raise ValueError("Type '%s' isn't large enough to represent linear indices; " % str(dtype) +
+                         "max index is %d, max representable val is %d" % (startlinidx + ary_size, int(maxval)))
+
+    linidxs = np.arange(startlinidx, startlinidx + ary_size)
+    if outbuf is not None:
+        outbuf[::incr] = linidxs
         outbuf.tofile(outfp)
     return ary_size
 
@@ -117,16 +144,20 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
     If a shape tuple is given at construction, then the output will have valid subscript indices according
     to this expected shape. See transpose_files() (no shape passed) and transpose_files_to_series() (with shape).
     """
-    def __init__(self, feeder_dir, linger_time, prefixes, prefix_delim='_', shape=None, dtype='uint16'):
-        super(SyncSeriesFeeder, self).__init__(feeder_dir, linger_time, prefixes, prefix_delim=prefix_delim)
+    def __init__(self, feeder_dir, linger_time, prefixes, shape=None, linear=False, dtype='uint16', indtype='uint16',
+                 fname_to_qname_fcn=getFilenamePrefix, fname_to_timepoint_fcn=getFilenamePostfix):
+        super(SyncSeriesFeeder, self).__init__(feeder_dir, linger_time, prefixes,
+                                               fname_to_qname_fcn=fname_to_qname_fcn,
+                                               fname_to_timepoint_fcn=fname_to_timepoint_fcn)
         self.prefixes = list(prefixes)
         self.shape = shape
+        self.linear = linear
         self.dtype = dtype
+        self.indtype = indtype
 
-    @staticmethod
-    def get_series_filename(srcfilenames, bytesize):
-        startcount = SyncCopyAndMoveFeeder.getFilenamePostfix(srcfilenames[0], '_')
-        endcount = SyncCopyAndMoveFeeder.getFilenamePostfix(srcfilenames[-1], '_')
+    def get_series_filename(self, srcfilenames, bytesize):
+        startcount = self.fname_to_timepoint_fcn(srcfilenames[0])
+        endcount = self.fname_to_timepoint_fcn(srcfilenames[-1])
         return "series-%s-%s_bytes%d.bin" % (startcount, endcount, bytesize)
 
     def feed(self, filenames):
@@ -142,19 +173,26 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
                     curnames = [fn for fn in fullnames if os.path.basename(fn).startswith(prefix)]
                     curnames.sort()
                     ninput_files = len(curnames)  # should be same for all prefixes
-                    if self.shape is None:
+                    if (not self.linear) and (self.shape is None):
                         nindices_written += transpose_files(curnames, tmpfp, dtype=self.dtype)
+                    elif self.linear:
+                        nindices_written += transpose_files_to_linear_series(curnames, tmpfp,
+                                                                             dtype=self.dtype, indtype=self.indtype,
+                                                                             startlinidx=nindices_written)
                     else:
                         nindices_written += transpose_files_to_series(curnames, tmpfp, tuple(self.shape),
-                                                                      dtype=self.dtype, startlinidx=nindices_written)
+                                                                      dtype=self.dtype, indtype=self.indtype,
+                                                                      startlinidx=nindices_written)
                 tmpfp.close()
 
                 record_vals_size = ninput_files * np.dtype(self.dtype).itemsize
-                if self.shape:
+                if self.linear:
+                    recordsize = np.dtype(self.dtype).itemsize + record_vals_size
+                elif self.shape:
                     recordsize = len(self.shape)*2 + record_vals_size  # key size in bytes + values size in bytes
                 else:
                     recordsize = record_vals_size
-                newname = SyncSeriesFeeder.get_series_filename(filenames, recordsize)
+                newname = self.get_series_filename(filenames, recordsize)
 
                 # touch prior to atomic move operation to delay slurping by spark
                 os.utime(tmpfname, None)
@@ -181,7 +219,9 @@ def parse_options():
     parser.add_option("--imgprefix", default="img")
     parser.add_option("--behavprefix", default="behav")
     parser.add_option("--shape", type="int", default=None, nargs=3)
+    parser.add_option("--linear", action="store_true", default=False)
     parser.add_option("--dtype", default="uint16")
+    parser.add_option("--indtype", default="uint16")
     opts, args = parser.parse_args()
 
     if len(args) != 3:
@@ -204,7 +244,7 @@ def main():
     opts = parse_options()
 
     feeder = SyncSeriesFeeder(opts.outdir, opts.linger_time, (opts.imgprefix, opts.behavprefix),
-                              shape=opts.shape, dtype=opts.dtype)
+                              shape=opts.shape, dtype=opts.dtype, indtype=opts.indtype)
 
     runloop((opts.imgdatadir, opts.behavdatadir), feeder, opts.poll_time, opts.mod_buffer_time)
 
