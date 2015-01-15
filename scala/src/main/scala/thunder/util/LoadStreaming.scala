@@ -73,10 +73,10 @@ object LoadStreaming {
    */
   def fromBinary (ssc: StreamingContext,
                 dir: String,
-                format: String = "int"): DStream[Array[Double]] = {
+                format: String = "int"): DStream[(Int, Array[Double])] = {
     val parser = new Parser(0, format)
     val lines = ssc.fileStream[LongWritable, BytesWritable, FixedLengthBinaryInputFormat](dir)
-    lines.map{ case (k, v) => v.getBytes}.map(parser.get)
+    lines.map{ case (k, v) => (k.toString.toInt, parser.get(v.getBytes))}
   }
 
   /**

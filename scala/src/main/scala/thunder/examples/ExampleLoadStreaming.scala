@@ -3,6 +3,8 @@ package thunder.examples
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import thunder.util.LoadStreaming
+import org.apache.spark.streaming._
+import org.apache.spark.streaming.StreamingContext._
 
 object ExampleLoadStreaming {
 
@@ -26,7 +28,7 @@ object ExampleLoadStreaming {
 
     val data = LoadStreaming.fromBinary(ssc, file)
 
-    data.map(v => v.mkString(" ")).print()
+    data.mapValues(v => v.mkString(" ")).print()
 
     data.foreachRDD(rdd => println(rdd.count()))
 
