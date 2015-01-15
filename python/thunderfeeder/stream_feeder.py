@@ -18,6 +18,8 @@ import sys
 import tempfile
 import time
 
+from feeder_logger import _logger
+from feeder_regex import RegexMatchToPredicate
 from updating_walk import updating_walk as uw
 
 
@@ -131,6 +133,9 @@ def parse_options():
     parser.add_option("--max-files", type="int", default=-1,
                       help="Max files to copy in one iteration "
                            "(negative disables), default %default")
+    parser.add_option("--filter-regex-file", default=None,
+                      help="File containing python regular expression. If passed, only move files for which " +
+                           "the base filename matches the given regex.")
     opts, args = parser.parse_args()
 
     if len(args) != 2:
@@ -143,14 +148,14 @@ def parse_options():
     return opts
 
 
-def file_check_generator(source_dir, mod_buffer_time, max_files=-1):
+def file_check_generator(source_dir, mod_buffer_time, max_files=-1, filename_predicate=None):
     """Generator function that polls the passed directory tree for new files, using the updating_walk.py logic.
 
     This generator will restart the underlying updating_walk at the last seen file if the updating walk runs
     out of available files.
     """
     next_batch_file, walker_restart_file = None, None
-    walker = uw(source_dir)
+    walker = uw(source_dir, filefilterfunc=filename_predicate)
     while True:
         filebatch = []
         files_left = max_files
@@ -171,24 +176,28 @@ def file_check_generator(source_dir, mod_buffer_time, max_files=-1):
             # no files left, restart after polling interval
             if not filebatch:
                 _logger.get().info("Out of files, waiting...")
-            walker = uw(source_dir, walker_restart_file)
+            walker = uw(source_dir, walker_restart_file, filefilterfunc=filename_predicate)
         yield filebatch
 
 
-def runloop(source_dir_or_dirs, feeder, poll_time, mod_buffer_time, max_files=-1):
-    """ Main program loop. This will check for new files in the passed input directories using file_check_generator,
-    push any new files found into the passed Feeder subclass via its feed() method, wait for poll_time,
-    and repeat forever.
-    """
+def build_filecheck_generators(source_dir_or_dirs, mod_buffer_time, max_files=-1, filename_predicate=None):
     if isinstance(source_dir_or_dirs, basestring):
         source_dirs = [source_dir_or_dirs]
     else:
         source_dirs = source_dir_or_dirs
 
-    last_time = time.time()
-    file_checkers = [file_check_generator(source_dir, mod_buffer_time, max_files=max_files)
+    file_checkers = [file_check_generator(source_dir, mod_buffer_time,
+                                          max_files=max_files, filename_predicate=filename_predicate)
                      for source_dir in source_dirs]
+    return file_checkers
 
+
+def runloop(file_checkers, feeder, poll_time):
+    """ Main program loop. This will check for new files in the passed input directories using file_check_generator,
+    push any new files found into the passed Feeder subclass via its feed() method, wait for poll_time,
+    and repeat forever.
+    """
+    last_time = time.time()
     while True:
         for file_checker in file_checkers:
             # this should never throw StopIteration, will just yield an empty list if nothing is avail:
@@ -220,23 +229,15 @@ def main():
 
     opts = parse_options()
 
+    if opts.filter_regex_file:
+        pred_fcn = RegexMatchToPredicate.fromFile(opts.filter_regex_file).predicate
+    else:
+        pred_fcn = None
+
     feeder = CopyAndMoveFeeder.fromOptions(opts)
-    runloop(opts.indir, feeder, opts.poll_time, opts.mod_buffer_time, max_files=opts.max_files)
-
-
-class StreamFeederLogger(object):
-
-    def __init__(self, name):
-        self._name = name
-        self._logger = None
-
-    def get(self):
-        if not self._logger:
-            self._logger = logging.getLogger(self._name)
-        return self._logger
-
-
-_logger = StreamFeederLogger("streamfeeder")
+    file_checkers = build_filecheck_generators(opts.indir, opts.mod_buffer_time,
+                                               max_files=opts.max_files, filename_predicate=pred_fcn)
+    runloop(file_checkers, feeder, opts.poll_time)
 
 if __name__ == "__main__":
     main()

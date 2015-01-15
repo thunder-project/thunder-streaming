@@ -8,7 +8,7 @@ import sys
 
 import numpy as np
 
-from stream_feeder import StreamFeederLogger as Logger
+from feeder_logger import StreamFeederLogger as Logger
 
 _logger = Logger("feeder-feeder")
 

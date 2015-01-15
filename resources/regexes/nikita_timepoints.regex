@@ -1,3 +1,2 @@
-# matches group of digits following a capital 'TM'
-# expects to be used with a regex.search, not regex.match
-TM(\d+)
+# matches group of digits following a capital 'TM' to start filename
+TM(\d+)[_\.].*

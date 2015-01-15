@@ -50,8 +50,9 @@ import tempfile
 
 import numpy as np
 
-from stream_feeder import runloop, _logger
-from grouping_stream_feeder import SyncCopyAndMoveFeeder, getFilenamePrefix, getFilenamePostfix, getParsingFunctions
+from feeder_logger import _logger
+from stream_feeder import build_filecheck_generators, runloop
+from grouping_stream_feeder import SyncCopyAndMoveFeeder, getFilenamePrefix, getFilenamePostfix, get_parsing_functions
 
 
 def transpose_files(filenames, outfp, dtype='uint16'):
@@ -224,6 +225,9 @@ def parse_options():
     parser.add_option("-l", "--linger-time", type="float", default=5.0,
                       help="Time to wait after feeding into stream before deleting intermediate file "
                            "(negative time disables), default %default")
+    parser.add_option("--max-files", type="int", default=-1,
+                      help="Max files to copy in one iteration "
+                           "(negative disables), default %default")
     parser.add_option("--imgprefix", default="img")
     parser.add_option("--behavprefix", default="behav")
     parser.add_option("--shape", type="int", default=None, nargs=3)
@@ -253,13 +257,15 @@ def main():
 
     opts = parse_options()
 
-    fname_to_qname_fcn, fname_to_timepoint_fcn = getParsingFunctions(opts)
+    fname_to_qname_fcn, fname_to_timepoint_fcn = get_parsing_functions(opts)
     feeder = SyncSeriesFeeder(opts.outdir, opts.linger_time, (opts.imgprefix, opts.behavprefix),
                               shape=opts.shape, dtype=opts.dtype, indtype=opts.indtype,
                               fname_to_qname_fcn=fname_to_qname_fcn,
                               fname_to_timepoint_fcn=fname_to_timepoint_fcn)
-
-    runloop((opts.imgdatadir, opts.behavdatadir), feeder, opts.poll_time, opts.mod_buffer_time)
+    file_checkers = build_filecheck_generators((opts.imgdatadir, opts.behavdatadir), opts.mod_buffer_time,
+                                               max_files=opts.max_files,
+                                               filename_predicate=fname_to_qname_fcn)
+    runloop(file_checkers, feeder, opts.poll_time)
 
 if __name__ == "__main__":
     main()

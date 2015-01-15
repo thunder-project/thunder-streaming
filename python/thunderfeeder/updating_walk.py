@@ -12,8 +12,10 @@ python updating_walk.py path_to_directory [time_per_update [start_filename]]
 import operator
 import os
 
+from feeder_logger import _logger
 
-def updating_walk(dirpath, startpath=None):
+
+def updating_walk(dirpath, startpath=None, filefilterfunc=None):
     """Generator function that yields filenames located underneath dirpath.
 
     Unlike os.walk or os.path.walk, this function will detect files that are created after the initial
@@ -29,6 +31,11 @@ def updating_walk(dirpath, startpath=None):
     startpath: string, optional, default None
         If passed, specifies a path underneath dirpath from which to begin the traversal. Paths
         lexicographically earlier than startpath will be ignored.
+
+    filefilterfunc: function, optional, default None
+        If passed, only files for which `if filefilterfunc(absolute_path_to_file)` evaluates as
+        True will be returned. (Files lexicographically earlier than the last returned file will
+        still be ignored, regardless of whether they match filefilterfunc).
 
     Yields
     ------
@@ -48,6 +55,7 @@ def updating_walk(dirpath, startpath=None):
             entrynames = [d for d in listdir(dirpath_) if (test(join(dirpath_, d)) and cmp(d, curentry))]
         else:
             entrynames = [d for d in listdir(dirpath_) if test(join(dirpath_, d))]
+        # TODO: sort this in reverse order, so that can do O(1) pop() off end
         entrynames.sort()
         return entrynames
 
@@ -76,7 +84,16 @@ def updating_walk(dirpath, startpath=None):
     # traverse files in this directory
     fnames = get_entries(dirpath, isfile, lastfile)
     while fnames:
-        lastfile = fnames.pop(0)
+        candidatefile = fnames.pop(0)
+        # test against passed filter out here rather than in get_entries
+        #   so that we can log files that get filtered out.
+        # (get_entries filters based on isfile and isdir, which are not exceptional
+        #   conditions when satisfied.)
+        if filefilterfunc is not None:
+            if not filefilterfunc(candidatefile):
+                _logger.warnIfNotAlreadyGiven("Skipping file: '%s'", join(dirpath, candidatefile))
+                continue
+        lastfile = candidatefile
         yield join(dirpath, lastfile)
         fnames = get_entries(dirpath, isfile, lastfile)
 
