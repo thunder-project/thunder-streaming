@@ -128,6 +128,9 @@ def parse_options():
     parser.add_option("-l", "--linger-time", type="float", default=5.0,
                       help="Time to wait after feeding into stream before deleting intermediate file "
                            "(negative time disables), default %default")
+    parser.add_option("--max-files", type="int", default=-1,
+                      help="Max files to copy in one iteration "
+                           "(negative disables), default %default")
     opts, args = parser.parse_args()
 
     if len(args) != 2:
@@ -140,7 +143,7 @@ def parse_options():
     return opts
 
 
-def file_check_generator(source_dir, mod_buffer_time):
+def file_check_generator(source_dir, mod_buffer_time, max_files=-1):
     """Generator function that polls the passed directory tree for new files, using the updating_walk.py logic.
 
     This generator will restart the underlying updating_walk at the last seen file if the updating walk runs
@@ -150,26 +153,29 @@ def file_check_generator(source_dir, mod_buffer_time):
     walker = uw(source_dir)
     while True:
         filebatch = []
+        files_left = max_files
         try:
             if not next_batch_file:
                 next_batch_file = next(walker)
                 walker_restart_file = next_batch_file
 
             delta = time.time() - os.stat(next_batch_file).st_mtime
-            while delta > mod_buffer_time:
+            while delta > mod_buffer_time and files_left:
                 filebatch.append(next_batch_file)
+                files_left -= 1
                 next_batch_file = None  # reset in case of exception on next line
                 next_batch_file = next(walker)
                 walker_restart_file = next_batch_file
 
         except StopIteration:
             # no files left, restart after polling interval
-            _logger.get().info("Out of files, waiting...")
+            if not filebatch:
+                _logger.get().info("Out of files, waiting...")
             walker = uw(source_dir, walker_restart_file)
         yield filebatch
 
 
-def runloop(source_dir_or_dirs, feeder, poll_time, mod_buffer_time):
+def runloop(source_dir_or_dirs, feeder, poll_time, mod_buffer_time, max_files=-1):
     """ Main program loop. This will check for new files in the passed input directories using file_check_generator,
     push any new files found into the passed Feeder subclass via its feed() method, wait for poll_time,
     and repeat forever.
@@ -180,7 +186,8 @@ def runloop(source_dir_or_dirs, feeder, poll_time, mod_buffer_time):
         source_dirs = source_dir_or_dirs
 
     last_time = time.time()
-    file_checkers = [file_check_generator(source_dir, mod_buffer_time) for source_dir in source_dirs]
+    file_checkers = [file_check_generator(source_dir, mod_buffer_time, max_files=max_files)
+                     for source_dir in source_dirs]
 
     while True:
         for file_checker in file_checkers:
@@ -214,7 +221,7 @@ def main():
     opts = parse_options()
 
     feeder = CopyAndMoveFeeder.fromOptions(opts)
-    runloop(opts.indir, feeder, opts.poll_time, opts.mod_buffer_time)
+    runloop(opts.indir, feeder, opts.poll_time, opts.mod_buffer_time, max_files=opts.max_files)
 
 
 class StreamFeederLogger(object):
