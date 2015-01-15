@@ -5,7 +5,7 @@ import logging
 import sys
 
 from stream_feeder import runloop, _logger
-from grouping_series_stream_feeder import SyncSeriesFeeder
+from grouping_series_stream_feeder import SyncSeriesFeeder, getParsingFunctions
 
 
 def parse_options():
@@ -24,6 +24,8 @@ def parse_options():
     parser.add_option("--linear", action="store_true", default=False)
     parser.add_option("--dtype", default="uint16")
     parser.add_option("--indtype", default="uint16")
+    parser.add_option("--prefix-regex-file", default=None)
+    parser.add_option("--timepoint-regex-file", default=None)
     opts, args = parser.parse_args()
 
     if len(args) != 2:
@@ -44,8 +46,10 @@ def main():
 
     opts = parse_options()
 
+    fname_to_qname_fcn, fname_to_timepoint_fcn = getParsingFunctions(opts)
     feeder = SyncSeriesFeeder(opts.outdir, opts.linger_time, (opts.imgprefix,),
-                              shape=opts.shape, dtype=opts.dtype, linear=opts.linear, indtype=opts.indtype)
+                              shape=opts.shape, dtype=opts.dtype, linear=opts.linear, indtype=opts.indtype,
+                              fname_to_qname_fcn=fname_to_qname_fcn, fname_to_timepoint_fcn=fname_to_timepoint_fcn)
 
     runloop((opts.imgdatadir,), feeder, opts.poll_time, opts.mod_buffer_time)
 

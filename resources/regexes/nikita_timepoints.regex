@@ -1,0 +1,3 @@
+# matches group of digits following a capital 'TM'
+# expects to be used with a regex.search, not regex.match
+TM(\d+)

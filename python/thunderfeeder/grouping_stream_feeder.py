@@ -15,6 +15,7 @@ b_03, after moving the a_01 b_01 pair it will block waiting for a b_02 to show u
 
 import logging
 import os
+import re
 import sys
 
 from collections import deque
@@ -59,6 +60,76 @@ def getFilenamePrefixAndPostfix(filename, delim='_'):
     prefix = splits[0]
     postfix = splits[1] if len(splits) > 1 else ''
     return prefix, postfix
+
+
+class RegexMatchToQueueName(object):
+    def __init__(self, regex_strings, queue_names):
+        """
+
+        regex_strings: sequence of string regular expressions
+            if a regex match() occurs for a passed filename, then the queue name at the same index will be returned
+            from queueName.
+        """
+        if len(regex_strings) != len(queue_names):
+            raise ValueError("Must have equal numbers of regular expressions and queue names, " +
+                             "got %d regexes and %d queues" % (len(regex_strings), len(queue_names)))
+        self.regexs = [re.compile(regex_str) for regex_str in regex_strings]
+        self.queue_names = list(queue_names)
+
+    @classmethod
+    def fromFile(cls, filename_or_handle):
+        # expected format is file of:
+        # queueName1 regex1
+        # queueName2 regex2
+        # with whitespace delimiting queue and regex
+        def parse_file(handle):
+            queueNames = []
+            regexes = []
+            for line in handle:
+                if not line.strip().startswith('#'):
+                    queueName, regex = line.strip().split(None, 1)
+                    queueNames.append(queueName)
+                    regexes.append(regex)
+            return queueNames, regexes
+        if isinstance(filename_or_handle, basestring):
+            with open(filename_or_handle, 'r') as fp:
+                queueNames, regexes = parse_file(fp)
+        else:
+            queueNames, regexes = parse_file(filename_or_handle)
+        return cls(regexes, queueNames)
+
+    def queueName(self, filename):
+        basename = os.path.basename(filename)
+        for qidx, regex in enumerate(self.regexs):
+            if regex.match(basename):
+                return self.queue_names[qidx]
+        return None
+
+
+class RegexMatchToTimepointString(object):
+    def __init__(self, regex_string, regex_group=1):
+        self.regex = re.compile(regex_string)
+        self.regex_group = regex_group
+
+    @classmethod
+    def fromFile(cls, filename_or_handle):
+        def parse_file(handle):
+            for line in handle:
+                if not line.strip().startswith('#'):
+                    # just read first non-comment line and return
+                    return line.strip()
+            return handle.read
+        if isinstance(filename_or_handle, basestring):
+            with open(filename_or_handle, 'r') as fp:
+                regex = parse_file(fp)
+        else:
+            regex = parse_file(filename_or_handle)
+        return cls(regex)
+
+    def timepoint(self, filename):
+        basename = os.path.basename(filename)
+        m = self.regex.search(basename)
+        return m.group(self.regex_group) if m else None
 
 
 class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
@@ -114,7 +185,13 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         # include heapq and bisect, but it probably doesn't really matter
         for filename in filenames:
             qname = self.fname_to_qname_fcn(filename)
+            if qname is None:
+                _logger.get().warn("Could not get queue name for file '%s', skipping" % filename)
+                continue
             tpname = self.fname_to_timepoint_fcn(filename)
+            if tpname is None:
+                _logger.get().warn("Could not get timepoint for file '%s', skipping" % filename)
+                continue
             self.qname_to_queue[qname].append(tpname)
             self.keys_to_fullnames[(qname, tpname)] = filename
 
@@ -157,6 +234,8 @@ def parse_options():
                            "(negative time disables), default %default")
     parser.add_option("--imgprefix", default="img")
     parser.add_option("--behavprefix", default="behav")
+    parser.add_option("--prefix-regex-file", default=None)
+    parser.add_option("--timepoint-regex-file", default=None)
     opts, args = parser.parse_args()
 
     if len(args) != 3:
@@ -170,6 +249,18 @@ def parse_options():
     return opts
 
 
+def getParsingFunctions(opts):
+    if opts.prefix_regex_file:
+        fname_to_qname_fcn = RegexMatchToQueueName.fromFile(opts.prefix_regex_file).queueName
+    else:
+        fname_to_qname_fcn = getFilenamePrefix
+    if opts.timepoint_regex_file:
+        fname_to_timepoint_fcn = RegexMatchToTimepointString.fromFile(opts.timepoint_regex_file).timepoint
+    else:
+        fname_to_timepoint_fcn = getFilenamePostfix
+    return fname_to_qname_fcn, fname_to_timepoint_fcn
+
+
 def main():
     _handler = logging.StreamHandler(sys.stdout)
     _handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s'))
@@ -178,7 +269,10 @@ def main():
 
     opts = parse_options()
 
-    feeder = SyncCopyAndMoveFeeder(opts.outdir, opts.linger_time, (opts.imgprefix, opts.behavprefix))
+    fname_to_qname_fcn, fname_to_timepoint_fcn = getParsingFunctions(opts)
+    feeder = SyncCopyAndMoveFeeder(opts.outdir, opts.linger_time, (opts.imgprefix, opts.behavprefix),
+                                   fname_to_qname_fcn=fname_to_qname_fcn,
+                                   fname_to_timepoint_fcn=fname_to_timepoint_fcn)
 
     runloop((opts.imgdatadir, opts.behavdatadir), feeder, opts.poll_time, opts.mod_buffer_time)
 

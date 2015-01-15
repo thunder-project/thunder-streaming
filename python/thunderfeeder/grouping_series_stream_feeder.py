@@ -9,6 +9,14 @@ Expected usage: something like:
  /mnt/tmpram/sparkinputdir/ \
  -l -1.0 --imgprefix images --behavprefix behaviour --shape 512 512 4
 
+ Example using regexes to specify queues and timepoints:
+ ./grouping_series_stream_feeder.py \
+ /mnt/data/data/nikita_mock/imginput/ \
+ /mnt/data/data/nikita_mock/behavinput/ \
+ /mnt/tmpram/sparkinputdir/ \
+ -l -1.0 --prefix-regex-file ../../resources/regexes/nikita_queuenames.regex \
+ --timepoint-regex-file ../../resources/regexes/nikita_timepoints.regex
+
  Set TMP environment var to same filesystem as output directory (here /mnt/tmpram/)
  so as to ensure that os.rename step is atomic - see stream_feeder.py.
 
@@ -43,7 +51,7 @@ import tempfile
 import numpy as np
 
 from stream_feeder import runloop, _logger
-from grouping_stream_feeder import SyncCopyAndMoveFeeder, getFilenamePrefix, getFilenamePostfix
+from grouping_stream_feeder import SyncCopyAndMoveFeeder, getFilenamePrefix, getFilenamePostfix, getParsingFunctions
 
 
 def transpose_files(filenames, outfp, dtype='uint16'):
@@ -170,7 +178,7 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
                 nindices_written = 0
                 ninput_files = 0
                 for prefix in self.prefixes:
-                    curnames = [fn for fn in fullnames if os.path.basename(fn).startswith(prefix)]
+                    curnames = [fn for fn in fullnames if self.fname_to_qname_fcn(fn) == prefix]
                     curnames.sort()
                     ninput_files = len(curnames)  # should be same for all prefixes
                     if (not self.linear) and (self.shape is None):
@@ -222,6 +230,8 @@ def parse_options():
     parser.add_option("--linear", action="store_true", default=False)
     parser.add_option("--dtype", default="uint16")
     parser.add_option("--indtype", default="uint16")
+    parser.add_option("--prefix-regex-file", default=None)
+    parser.add_option("--timepoint-regex-file", default=None)
     opts, args = parser.parse_args()
 
     if len(args) != 3:
@@ -243,8 +253,11 @@ def main():
 
     opts = parse_options()
 
+    fname_to_qname_fcn, fname_to_timepoint_fcn = getParsingFunctions(opts)
     feeder = SyncSeriesFeeder(opts.outdir, opts.linger_time, (opts.imgprefix, opts.behavprefix),
-                              shape=opts.shape, dtype=opts.dtype, indtype=opts.indtype)
+                              shape=opts.shape, dtype=opts.dtype, indtype=opts.indtype,
+                              fname_to_qname_fcn=fname_to_qname_fcn,
+                              fname_to_timepoint_fcn=fname_to_timepoint_fcn)
 
     runloop((opts.imgdatadir, opts.behavdatadir), feeder, opts.poll_time, opts.mod_buffer_time)
 
