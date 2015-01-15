@@ -8,13 +8,13 @@ THUNDER_STREAMING_DIR=/groups/freeman/home/swisherj/thunder-streaming
 MAX_FILES=-1  # disable rate limiting
 
 # local testing directories - leave commented out for use on cluster:
-IMAGING_INPUT_DIR=/mnt/data/data/nikita_mock/imginput/
-EPHYS_INPUT_DIR=/mnt/data/data/nikita_mock/behavinput/
-SPARK_OUTPUT_DIR=/mnt/tmpram/sparkinputdir/
-# TMP_OUTPUT_DIR must be on the same filesystem as SPARK_OUTPUT_DIR:
-TMP_OUTPUT_DIR=/mnt/tmpram/
-THUNDER_STREAMING_DIR=/mnt/data/src/thunder_streaming_mainline_1501
-MAX_FILES=2  # turn on rate limiting for simulated runs
+# IMAGING_INPUT_DIR=/mnt/data/data/nikita_mock/imginput/
+# EPHYS_INPUT_DIR=/mnt/data/data/nikita_mock/behavinput/
+# SPARK_OUTPUT_DIR=/mnt/tmpram/sparkinputdir/
+# # TMP_OUTPUT_DIR must be on the same filesystem as SPARK_OUTPUT_DIR:
+# TMP_OUTPUT_DIR=/mnt/tmpram/
+# THUNDER_STREAMING_DIR=/mnt/data/src/thunder_streaming_mainline_1501
+# MAX_FILES=2  # turn on rate limiting for simulated runs
 
 export TMP=$TMP_OUTPUT_DIR
 rm $SPARK_OUTPUT_DIR/*
