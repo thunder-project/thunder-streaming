@@ -44,21 +44,21 @@ class FittedModel(
 }
 
 /**
- * Stateful linear regression on streaming data
- *
- * The underlying model is that every batch of streaming
- * data contains a set of records with unique keys,
- * one is the feature, and the rest can be predicted
- * by the feature. We estimate the sufficient statistics
- * of the features, and each of the data points,
- * to computing a running estimate of the linear regression
- * model for each key. Returns a state stream of fitted models.
- *
- * Features and labels from different batches
- * can have different lengths.
- *
- * See also: StreamingLinearRegression
- */
+* Stateful linear regression on streaming data
+*
+* The underlying model is that every batch of streaming
+* data contains a set of records with unique keys,
+* one is the feature, and the rest can be predicted
+* by the feature. We estimate the sufficient statistics
+* of the features, and each of the data points,
+* to computing a running estimate of the linear regression
+* model for each key. Returns a state stream of fitted models.
+*
+* Features and labels from different batches
+* can have different lengths.
+*
+* See also: StreamingLinearRegression
+*/
 class StatefulLinearRegression (
   var featureKeys: Array[Int])
   extends Serializable with Logging
@@ -156,8 +156,8 @@ class StatefulLinearRegression (
 }
 
 /**
- * Top-level methods for calling Stateful Linear Regression.
- */
+* Top-level methods for calling Stateful Linear Regression.
+*/
 object StatefulLinearRegression {
 
   /**
