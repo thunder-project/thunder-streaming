@@ -154,10 +154,12 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
     to this expected shape. See transpose_files() (no shape passed) and transpose_files_to_series() (with shape).
     """
     def __init__(self, feeder_dir, linger_time, prefixes, shape=None, linear=False, dtype='uint16', indtype='uint16',
-                 fname_to_qname_fcn=getFilenamePrefix, fname_to_timepoint_fcn=getFilenamePostfix):
+                 fname_to_qname_fcn=getFilenamePrefix, fname_to_timepoint_fcn=getFilenamePostfix,
+                 check_file_size=False):
         super(SyncSeriesFeeder, self).__init__(feeder_dir, linger_time, prefixes,
                                                fname_to_qname_fcn=fname_to_qname_fcn,
-                                               fname_to_timepoint_fcn=fname_to_timepoint_fcn)
+                                               fname_to_timepoint_fcn=fname_to_timepoint_fcn,
+                                               check_file_size_mismatch=check_file_size)
         self.prefixes = list(prefixes)
         self.shape = shape
         self.linear = linear
@@ -165,8 +167,8 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
         self.indtype = indtype
 
     def get_series_filename(self, srcfilenames, bytesize):
-        startcount = self.fname_to_timepoint_fcn(srcfilenames[0])
-        endcount = self.fname_to_timepoint_fcn(srcfilenames[-1])
+        startcount = self.fname_to_timepoint_fcn(os.path.basename(srcfilenames[0]))
+        endcount = self.fname_to_timepoint_fcn(os.path.basename(srcfilenames[-1]))
         return "series-%s-%s_bytes%d.bin" % (startcount, endcount, bytesize)
 
     def feed(self, filenames):
@@ -201,7 +203,7 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
                     recordsize = len(self.shape)*2 + record_vals_size  # key size in bytes + values size in bytes
                 else:
                     recordsize = record_vals_size
-                newname = self.get_series_filename(filenames, recordsize)
+                newname = self.get_series_filename(fullnames, recordsize)
 
                 # touch prior to atomic move operation to delay slurping by spark
                 os.utime(tmpfname, None)
@@ -236,6 +238,9 @@ def parse_options():
     parser.add_option("--indtype", default="uint16")
     parser.add_option("--prefix-regex-file", default=None)
     parser.add_option("--timepoint-regex-file", default=None)
+    parser.add_option("--check-size", action="store_true", default=False,
+                      help="If set, assume all files should be the same size as the first encountered file of that " +
+                           "type, and discard with a warning files that have different sizes.")
     opts, args = parser.parse_args()
 
     if len(args) != 3:
@@ -261,7 +266,8 @@ def main():
     feeder = SyncSeriesFeeder(opts.outdir, opts.linger_time, (opts.imgprefix, opts.behavprefix),
                               shape=opts.shape, dtype=opts.dtype, indtype=opts.indtype,
                               fname_to_qname_fcn=fname_to_qname_fcn,
-                              fname_to_timepoint_fcn=fname_to_timepoint_fcn)
+                              fname_to_timepoint_fcn=fname_to_timepoint_fcn,
+                              check_file_size=opts.check_size)
     file_checkers = build_filecheck_generators((opts.imgdatadir, opts.behavdatadir), opts.mod_buffer_time,
                                                max_files=opts.max_files,
                                                filename_predicate=fname_to_qname_fcn)

@@ -77,7 +77,8 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
     """
     def __init__(self, feeder_dir, linger_time, qnames,
                  fname_to_qname_fcn=getFilenamePrefix,
-                 fname_to_timepoint_fcn=getFilenamePostfix):
+                 fname_to_timepoint_fcn=getFilenamePostfix,
+                 check_file_size_mismatch=False):
         super(SyncCopyAndMoveFeeder, self).__init__(feeder_dir=feeder_dir, linger_time=linger_time)
         self.qname_to_queue = {}
         for qname in qnames:
@@ -85,6 +86,7 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         self.keys_to_fullnames = {}
         self.fname_to_qname_fcn = fname_to_qname_fcn
         self.fname_to_timepoint_fcn = fname_to_timepoint_fcn
+        self.qname_to_expected_size = {} if check_file_size_mismatch else None
 
     def get_matching_first_entry(self):
         """Pops and returns the first entry across all queues if the first entry
@@ -108,6 +110,24 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
             for queue in self.qname_to_queue.itervalues():
                 queue.popleft()
         return matched
+
+    def filter_size_mismatch_files(self, filenames):
+        filtered_timepoints = []
+        for filename in filenames:
+            size = os.path.getsize(filename)
+            bname = os.path.basename(filename)
+            queuename = self.fname_to_qname_fcn(bname)
+            timepoint = self.fname_to_timepoint_fcn(bname)
+            expected_size = self.qname_to_expected_size.setdefault(queuename, size)
+            if size != expected_size:
+                filtered_timepoints.append(timepoint)
+                _logger.get().warn("Size mismatch on '%s', discarding timepoint '%s'. (Expected %d bytes, got %d bytes.)",
+                                   filename, timepoint, expected_size, size)
+        if filtered_timepoints:
+            return [filename for filename in filenames if
+                    self.fname_to_timepoint_fcn(os.path.basename(filename)) not in filtered_timepoints]
+        else:
+            return filenames
 
     def match_filenames(self, filenames):
         """Update internal queues with passed filenames. Returns names that match across the head of all queues if
@@ -138,7 +158,6 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         # check for matching first entries across queues
         matching = self.get_matching_first_entry()
         matches = []
-        # TODO: add max # matches here
         while matching:
             matches.append(matching)
             matching = self.get_matching_first_entry()
@@ -147,6 +166,13 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         fullnamekeys = list(iproduct(self.qname_to_queue.iterkeys(), matches))
         fullnames = [self.keys_to_fullnames.pop(key) for key in fullnamekeys]
         fullnames.sort()
+
+        # filter out files that are smaller than the first file to be added to the queue, if requested
+        # this attempts to check for and work around an error state where some files are incompletely
+        # transferred
+        if self.qname_to_expected_size is not None:
+            fullnames = self.filter_size_mismatch_files(fullnames)
+
         return fullnames
 
     def feed(self, filenames):
