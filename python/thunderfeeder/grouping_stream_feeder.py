@@ -78,7 +78,8 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
     def __init__(self, feeder_dir, linger_time, qnames,
                  fname_to_qname_fcn=getFilenamePrefix,
                  fname_to_timepoint_fcn=getFilenamePostfix,
-                 check_file_size_mismatch=False):
+                 check_file_size_mismatch=False,
+                 check_skip_in_sequence=True):
         super(SyncCopyAndMoveFeeder, self).__init__(feeder_dir=feeder_dir, linger_time=linger_time)
         self.qname_to_queue = {}
         for qname in qnames:
@@ -87,6 +88,8 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         self.fname_to_qname_fcn = fname_to_qname_fcn
         self.fname_to_timepoint_fcn = fname_to_timepoint_fcn
         self.qname_to_expected_size = {} if check_file_size_mismatch else None
+        self.do_check_sequence = check_skip_in_sequence
+        self.last_timepoint = None
 
     def get_matching_first_entry(self):
         """Pops and returns the first entry across all queues if the first entry
@@ -129,6 +132,16 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         else:
             return filenames
 
+    def check_sequence(self, timepoint_string):
+        if self.last_timepoint is None:
+            self.last_timepoint = int(timepoint_string)
+            return
+        cur_timepoint = int(timepoint_string)
+        if cur_timepoint != self.last_timepoint + 1:
+            _logger.get().warn("Missing timepoints detected, went from '%d' to '%d'",
+                               self.last_timepoint, cur_timepoint)
+        self.last_timepoint = cur_timepoint
+
     def match_filenames(self, filenames):
         """Update internal queues with passed filenames. Returns names that match across the head of all queues if
         any are found, or an empty list otherwise.
@@ -158,7 +171,10 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         # check for matching first entries across queues
         matching = self.get_matching_first_entry()
         matches = []
+        dcs = self.do_check_sequence
         while matching:
+            if dcs:
+                self.check_sequence(matching)
             matches.append(matching)
             matching = self.get_matching_first_entry()
 
