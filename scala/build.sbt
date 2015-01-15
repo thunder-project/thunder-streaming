@@ -1,6 +1,6 @@
-name := "thunder"
+name := "thunder-streaming"
 
-version := "0.5.0_dev"
+version := "0.1.0_dev"
 
 scalaVersion := "2.10.3"
 
