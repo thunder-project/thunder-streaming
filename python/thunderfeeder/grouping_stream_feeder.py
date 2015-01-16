@@ -16,6 +16,7 @@ b_03, after moving the a_01 b_01 pair it will block waiting for a b_02 to show u
 import logging
 import os
 import sys
+import time
 
 from collections import deque
 from itertools import imap, izip, groupby, tee
@@ -90,24 +91,99 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         self.qname_to_expected_size = {} if check_file_size_mismatch else None
         self.do_check_sequence = check_skip_in_sequence
         self.last_timepoint = None
+        self.last_mismatch = None
+        self.last_mismatch_time = None
+        self.mismatch_wait_time = 5.0 # time in s to wait after detecting a mismatch before popping mismatching elements
+
+    # def get_matching_first_entry(self):
+    #     """Pops and returns the first entry across all queues if the first entry
+    #     is the same on all queues, otherwise return None and leave queues unchanged
+    #     """
+    #     matched = None
+    #     try:
+    #         for queue in self.qname_to_queue.itervalues():
+    #             first = queue[0]
+    #             if matched:
+    #                 if not first == matched:
+    #                     matched = None
+    #                     break
+    #             else:
+    #                 matched = first
+    #     except IndexError:
+    #         # don't have anything in at least one queue
+    #         matched = None
+    #
+    #     if matched is not None:
+    #         for queue in self.qname_to_queue.itervalues():
+    #             queue.popleft()
+    #     return matched
+
+    def check_and_pop_mismatches(self, first_elts):
+        """Checks for a mismatched first elements across queues.
+
+        If the first mismatched element has remained the same for longer than
+        self.<SOME ATTRIBUTE>, then start popping out mismatching elements.
+
+        Updates self.last_mismatch and self.last_mismatch_time
+        """
+        comp_elt = first_elts[0]
+        # the below list comprehension Does The Right Thing for first_elts of length 1
+        # and returns [], and all([]) is True.
+        if comp_elt is not None and all([elt == comp_elt for elt in first_elts[1:]]):
+            matched = comp_elt
+            self.last_mismatch = None
+            self.last_mismatch_time = None
+        else:
+            matched = None
+            # this returns None if there are any Nones in the list:
+            cur_mismatch = reduce(min, first_elts)
+            if cur_mismatch is None:
+                # if there is at least one None, then there is some empty queue
+                # we don't consider it a mismatch unless there are first elements in each queue, and
+                # they don't match - so if a queue is empty, we don't have a mismatch
+                self.last_mismatch = None
+                self.last_mismatch_time = None
+            else:
+                now = time.time()
+                if self.last_mismatch:  # we already had a mismatch last time through, presumably on the same elt
+                    if self.last_mismatch != cur_mismatch:
+                        # blow up
+                        raise Exception("Current mismatch '%s' doesn't match last mismatch '%s' " %
+                                        (cur_mismatch, self.last_mismatch) + "- this shouldn't happen")
+                    if now - self.last_mismatch_time > self.mismatch_wait_time:
+                        # we have been stuck on this element for longer than mismatch_wait_time
+                        # find the next-lowest element - this is not None, since the other queues are not empty
+                        next_elts = first_elts[:]  # copy
+                        next_elts.remove(cur_mismatch)
+                        next_elt = reduce(min, next_elts)
+                        # cycle through *all* queues, removing any elts less than next_elt
+                        popping = True
+                        while popping:
+                            popping = False
+                            for qname, q in self.qname_to_queue.iteritems():
+                                if q and q[0] < next_elt:
+                                    discard = q.pop()
+                                    popping = True
+                                    _logger.get().warn("Discarding item '%s' from queue '%s'; " % (discard, qname) +
+                                                       "waited for match for more than %g s" % self.mismatch_wait_time)
+                        # finished popping all mismatching elements less than next_elt
+                        # we might have a match at this point, but wait for next iteration to pick up
+                        self.last_mismatch = None
+                        self.last_mismatch_time = None
+                else:
+                    self.last_mismatch = cur_mismatch
+                    self.last_mismatch_time = now
+        return matched
 
     def get_matching_first_entry(self):
         """Pops and returns the first entry across all queues if the first entry
         is the same on all queues, otherwise return None and leave queues unchanged
         """
-        matched = None
-        try:
-            for queue in self.qname_to_queue.itervalues():
-                first = queue[0]
-                if matched:
-                    if not first == matched:
-                        matched = None
-                        break
-                else:
-                    matched = first
-        except IndexError:
-            # don't have anything in at least one queue
-            matched = None
+        first_elts = []
+        for q in self.qname_to_queue.itervalues():
+            first_elts.append(q[0] if q else None)
+
+        matched = self.check_and_pop_mismatches(first_elts)
 
         if matched is not None:
             for queue in self.qname_to_queue.itervalues():
