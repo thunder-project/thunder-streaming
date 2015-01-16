@@ -29,7 +29,7 @@ object FixedLengthBinaryInputFormat {
   def getRecordLength(context: JobContext): Int = {
 
     // retrieve record length from configuration
-    val recordLength = context.getConfiguration.get("recordLength").toInt
+    var recordLength = context.getConfiguration.get("recordLength")
 
     // try to use filename to get record length (used in streaming applications
     // where record length is not constant)
@@ -51,12 +51,14 @@ object FixedLengthBinaryInputFormat {
       if (start == -1) {
         throw new IllegalArgumentException("cannot find string 'bytes' in file name")
       }
-      val recordLength = name.slice(start, name.length).drop(5).dropRight(4).toInt
-      if (recordLength <= 0) {
+      recordLength = name.slice(start, name.length).drop(5).dropRight(4)
+      if (recordLength.toInt <= 0) {
         throw new IllegalArgumentException("record length must be positive")
       }
     }
-    recordLength
+
+    recordLength.toInt
+
   }
 
 }

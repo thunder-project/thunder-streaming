@@ -7,8 +7,7 @@ import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.dstream.DStream
 
-import thunder.util.LoadStreaming
-import thunder.util.Save
+import thunder.util.{SaveStreaming, LoadStreaming, Save}
 
 /**
  * Stateful statistics
@@ -50,22 +49,22 @@ object StatefulStats {
   }
 
   def main(args: Array[String]) {
-    if (args.length != 5) {
+    if (args.length != 4) {
       System.err.println(
-        "Usage: StatefulStats <master> <directory> <batchTime> <outputDirectory> <dims>")
+        "Usage: StatefulStats <master> <inputDirectory> <outputDirectory> <batchTime>")
       System.exit(1)
     }
 
-    val (master, directory, batchTime, outputDirectory, dims) = (
-      args(0), args(1), args(2).toLong, args(3),
-      args(4).drop(1).dropRight(1).split(",").map(_.trim.toInt))
+    val (master, directory, outputDirectory, batchTime) = (
+      args(0), args(1), args(2), args(3).toLong)
 
     val conf = new SparkConf().setMaster(master).setAppName("StatefulStats")
 
     if (!master.contains("local")) {
       conf.setSparkHome(System.getenv("SPARK_HOME"))
-          .setJars(List("target/scala-2.10/thunder_2.10-0.1.0.jar"))
+          .setJars(List("target/scala-2.10/thunder-streaming_2.10-0.1.0_dev.jar"))
           .set("spark.executor.memory", "100G")
+          .set("spark.default.parallelism", "100")
     }
 
     /** Create Streaming Context */
@@ -73,7 +72,7 @@ object StatefulStats {
     ssc.checkpoint(System.getenv("CHECKPOINT"))
 
     /** Load streaming data */
-    val data = LoadStreaming.fromTextWithKeys(ssc, directory, dims.size, dims)
+    val data = LoadStreaming.fromBinary(ssc, directory, format="short")
 
     /** Train stateful statistics models */
     val state = StatefulStats.trainStreaming(data)
@@ -81,8 +80,11 @@ object StatefulStats {
     /** Print results (for testing) */
     state.mapValues(x => x.toString()).print()
 
+    /** Get the mean */
+    val result = state.mapValues(x => Array(x.mean)).filter{case (k, v) => k < 512 * 512 * 4}
+
     /** Collect output */
-    //val out = state.mapValues(x => Array(x.count, x.mean, x.variance))
+    SaveStreaming.asBinaryWithKeys(result, outputDirectory, Seq("mean"))
 
     ssc.start()
     ssc.awaitTermination()

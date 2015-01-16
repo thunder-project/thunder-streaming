@@ -1,6 +1,6 @@
-name := "thunder"
+name := "thunder-streaming"
 
-version := "0.5.0_dev"
+version := "0.1.0_dev"
 
 scalaVersion := "2.10.3"
 
@@ -23,6 +23,8 @@ libraryDependencies += "org.apache.spark" %% "spark-streaming" % "1.2.0" exclude
 libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.2.0" excludeAll(
   ExclusionRule(organization = "org.apache.hadoop")
   )
+
+libraryDependencies += "colt" % "colt" % "1.2.0"
 
 libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0" % "test"
 
