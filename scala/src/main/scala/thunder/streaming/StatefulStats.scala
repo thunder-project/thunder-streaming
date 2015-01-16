@@ -64,6 +64,7 @@ object StatefulStats {
       conf.setSparkHome(System.getenv("SPARK_HOME"))
           .setJars(List("target/scala-2.10/thunder-streaming_2.10-0.1.0_dev.jar"))
           .set("spark.executor.memory", "100G")
+          .set("spark.default.parallelism", "100")
     }
 
     /** Create Streaming Context */
