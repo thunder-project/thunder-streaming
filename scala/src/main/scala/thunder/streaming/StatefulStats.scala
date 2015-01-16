@@ -8,6 +8,17 @@ import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.dstream.DStream
 
 import thunder.util.{SaveStreaming, LoadStreaming, Save}
+/**
+ * To run: first build assembly jar:
+ * `sbt assembly`
+ *
+ * Then pass assembled uber-jar to spark-submit:
+ *
+ *$SPARK_HOME/bin/spark-submit --master local --class thunder.streaming.StatefulStats \
+ * ./target/scala-2.10/thunder-streaming-assembly-0.1.0_dev.jar \
+ *  <master> <inputDirectory> <outputDirectory> [batch time]
+ */
+
 
 /**
  * Stateful statistics
@@ -30,6 +41,14 @@ class StatefulStats ()
 }
 
 /**
+ * Default parameters for scopt option parser
+ */
+case class OptParams( master: String = null,
+                      input: String = null,
+                      output: String = null,
+                      batchTime: Long = 5l)
+
+/**
  * Top-level methods for calling Stateful Stats.
  */
 object StatefulStats {
@@ -49,18 +68,39 @@ object StatefulStats {
   }
 
   def main(args: Array[String]) {
-    if (args.length != 4) {
-      System.err.println(
-        "Usage: StatefulStats <master> <inputDirectory> <outputDirectory> <batchTime>")
-      System.exit(1)
+
+    val parser = new scopt.OptionParser[OptParams]("StatefulStats") {
+      head("StatefulStats", "0.1")
+      arg[String]("<master>")
+        .required()
+        .text("URL for Spark master")
+        .action((x, c) => c.copy(master = x))
+      arg[String]("<inputDirectory>")
+        .required()
+        .text("Path to directory of input data")
+        .action((x, c) => c.copy(input = x))
+      arg[String]("outputDirectory")
+        .required()
+        .text("Path to directory for output data")
+        .action((x, c) => c.copy(output = x))
+      arg[Long]("batch time")
+        .optional()
+        .text("Streaming batch time in s (whole numbers), default 5")
+        .action((x, c) => c.copy(batchTime = x))
     }
 
-    val (master, directory, outputDirectory, batchTime) = (
-      args(0), args(1), args(2), args(3).toLong)
+    parser.parse(args, OptParams()) match {
+      case Some(params) =>
+        run(params)
+      case None =>
+        sys.exit(1)
+    }
+  }
 
-    val conf = new SparkConf().setMaster(master).setAppName("StatefulStats")
+  def run(params: OptParams) {
+    val conf = new SparkConf().setMaster(params.master).setAppName("StatefulStats")
 
-    if (!master.contains("local")) {
+    if (!params.master.contains("local")) {
       conf.setSparkHome(System.getenv("SPARK_HOME"))
           .setJars(List("target/scala-2.10/thunder-streaming_2.10-0.1.0_dev.jar"))
           .set("spark.executor.memory", "100G")
@@ -68,11 +108,11 @@ object StatefulStats {
     }
 
     /** Create Streaming Context */
-    val ssc = new StreamingContext(conf, Seconds(batchTime))
+    val ssc = new StreamingContext(conf, Seconds(params.batchTime))
     ssc.checkpoint(System.getenv("CHECKPOINT"))
 
     /** Load streaming data */
-    val data = LoadStreaming.fromBinary(ssc, directory, format="short")
+    val data = LoadStreaming.fromBinary(ssc, params.input, format="short")
 
     /** Train stateful statistics models */
     val state = StatefulStats.trainStreaming(data)
@@ -84,7 +124,7 @@ object StatefulStats {
     val result = state.mapValues(x => Array(x.mean)).filter{case (k, v) => k < 512 * 512 * 4}
 
     /** Collect output */
-    SaveStreaming.asBinaryWithKeys(result, outputDirectory, Seq("mean"))
+    SaveStreaming.asBinaryWithKeys(result, params.output, Seq("mean"))
 
     ssc.start()
     ssc.awaitTermination()

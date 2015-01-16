@@ -1,3 +1,11 @@
+import AssemblyKeys._
+
+assemblySettings
+
+assembleArtifact in packageScala := false
+
+test in assembly := {}
+
 name := "thunder-streaming"
 
 version := "0.1.0_dev"
@@ -10,21 +18,23 @@ ivyXML := <dependency org="org.eclipse.jetty.orbit" name="javax.servlet" rev="3.
 
 net.virtualvoid.sbt.graph.Plugin.graphSettings
 
-libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "1.0.4"
+libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "1.0.4" % "provided"
 
-libraryDependencies += "org.apache.spark" %% "spark-core" % "1.2.0" excludeAll(
+libraryDependencies += "org.apache.spark" %% "spark-core" % "1.2.0" % "provided" excludeAll(
   ExclusionRule(organization = "org.apache.hadoop")
   )
 
-libraryDependencies += "org.apache.spark" %% "spark-streaming" % "1.2.0" excludeAll(
+libraryDependencies += "org.apache.spark" %% "spark-streaming" % "1.2.0" % "provided" excludeAll(
   ExclusionRule(organization = "org.apache.hadoop")
   )
 
-libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.2.0" excludeAll(
+libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.2.0" % "provided" excludeAll(
   ExclusionRule(organization = "org.apache.hadoop")
   )
 
 libraryDependencies += "colt" % "colt" % "1.2.0"
+
+libraryDependencies += "com.github.scopt" %% "scopt" % "3.3.0"
 
 libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0" % "test"
 
@@ -33,6 +43,8 @@ libraryDependencies += "io.spray" %% "spray-json" % "1.2.5"
 libraryDependencies += "org.jblas" % "jblas" % "1.2.3"
 
 resolvers += "spray" at "http://repo.spray.io/"
+
+resolvers += Resolver.sonatypeRepo("public")
 
 resolvers ++= Seq(
   "Akka Repository" at "http://repo.akka.io/releases/",
