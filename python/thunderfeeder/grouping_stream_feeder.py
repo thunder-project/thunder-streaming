@@ -162,7 +162,7 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
                             popping = False
                             for qname, q in self.qname_to_queue.iteritems():
                                 if q and q[0] < next_elt:
-                                    discard = q.pop()
+                                    discard = q.popleft()
                                     popping = True
                                     _logger.get().warn("Discarding item '%s' from queue '%s'; " % (discard, qname) +
                                                        "waited for match for more than %g s" % self.mismatch_wait_time)
