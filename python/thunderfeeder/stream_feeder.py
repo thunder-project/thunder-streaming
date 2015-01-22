@@ -170,6 +170,7 @@ def file_check_generator(source_dir, mod_buffer_time, max_files=-1, filename_pre
                 files_left -= 1
                 next_batch_file = None  # reset in case of exception on next line
                 next_batch_file = next(walker)
+                delta = time.time() - os.stat(next_batch_file).st_mtime
                 walker_restart_file = next_batch_file
 
         except StopIteration:
