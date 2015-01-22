@@ -42,10 +42,10 @@ Given data in this format, the script should be called with --shape xdim ydim zd
 specified in x, y, z order. (This is consistent with the behavior of the rest of Thunder.)
 
 """
+import glob
 import logging
 import os
 import sys
-
 import tempfile
 
 import numpy as np
@@ -217,6 +217,13 @@ class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
         return fullnames
 
 
+def get_last_matching_directory(directoryPathPattern):
+    dirnames = [fname for fname in glob.glob(directoryPathPattern) if os.path.isdir(fname)]
+    if dirnames:
+        return sorted(dirnames)[-1]
+    raise ValueError("No directories found matching pattern '%s'" % directoryPathPattern)
+
+
 def parse_options():
     import optparse
     parser = optparse.OptionParser(usage="%prog imgdatadir behavdatadir outdir [options]")
@@ -251,8 +258,8 @@ def parse_options():
         print >> sys.stderr, parser.get_usage()
         sys.exit(1)
 
-    setattr(opts, "imgdatadir", args[0])
-    setattr(opts, "behavdatadir", args[1])
+    setattr(opts, "imgdatadir", get_last_matching_directory(args[0]))
+    setattr(opts, "behavdatadir", get_last_matching_directory(args[1]))
     setattr(opts, "outdir", args[2])
 
     return opts
@@ -265,6 +272,9 @@ def main():
     _logger.get().setLevel(logging.INFO)
 
     opts = parse_options()
+
+    _logger.get().info("Reading images from: %s", opts.imgdatadir)
+    _logger.get().info("Reading behavioral/ephys data from: %s", opts.behavdatadir)
 
     fname_to_qname_fcn, fname_to_timepoint_fcn = get_parsing_functions(opts)
     feeder = SyncSeriesFeeder(opts.outdir, opts.linger_time, (opts.imgprefix, opts.behavprefix),
