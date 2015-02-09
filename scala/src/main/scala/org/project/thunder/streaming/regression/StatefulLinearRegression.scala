@@ -1,18 +1,13 @@
-package thunder.streaming
+package org.project.thunder.streaming.regression
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.dstream.DStream
 
-import thunder.util.LoadStreaming
-import thunder.util.Save
-import thunder.util.io.Keys
 import org.apache.spark.Logging
 import scala.math.sqrt
-import scala.Some
 import cern.colt.matrix.DoubleFactory2D
 import cern.colt.matrix.DoubleFactory1D
 import cern.colt.matrix.DoubleMatrix2D
@@ -20,6 +15,8 @@ import cern.colt.matrix.DoubleMatrix1D
 import cern.jet.math.Functions.{plus, minus, bindArg2, pow}
 import cern.colt.matrix.linalg.Algebra.DEFAULT.{inverse, mult, transpose}
 
+import org.project.thunder.streaming.util.LoadStreaming
+import org.project.thunder.streaming.util.io.Keys
 
 /** Class for representing parameters and sufficient statistics for a running linear regression model */
 class FittedModel(

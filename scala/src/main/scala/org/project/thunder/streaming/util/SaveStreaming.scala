@@ -1,7 +1,8 @@
-package thunder.util
+package org.project.thunder.streaming.util
 
 import org.apache.spark.streaming.dstream.DStream
-import thunder.util.io.{TextWriter, BinaryWriter}
+
+import org.project.thunder.streaming.util.io.{TextWriter, BinaryWriter}
 
 /** Object with methods for saving results from a DStream */
 

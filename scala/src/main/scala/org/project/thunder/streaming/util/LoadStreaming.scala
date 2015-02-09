@@ -1,12 +1,13 @@
-package thunder.util
+package org.project.thunder.streaming.util
 
-import thunder.util.io.Parser
-import thunder.util.io.Keys
+
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.mllib.regression.LabeledPoint
-import thunder.util.io.hadoop.FixedLengthBinaryInputFormat
 import org.apache.hadoop.io.{BytesWritable, LongWritable}
+
+import org.project.thunder.streaming.util.io.{Keys, Parser}
+import org.project.thunder.streaming.util.io.hadoop.FixedLengthBinaryInputFormat
 
 
 object LoadStreaming {

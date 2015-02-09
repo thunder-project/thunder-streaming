@@ -1,4 +1,4 @@
-package thunder.util.io.hadoop
+package org.project.thunder.streaming.util.io.hadoop
 
 import java.io.IOException
 import scala.util.control.Breaks._

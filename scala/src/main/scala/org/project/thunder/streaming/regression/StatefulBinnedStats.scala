@@ -1,8 +1,7 @@
 
-package thunder.streaming
+package org.project.thunder.streaming.regression
 
-import org.apache.spark.{SparkContext, SparkConf, Logging}
-import org.apache.spark.SparkContext._
+import org.apache.spark.Logging
 import org.apache.spark.util.StatCounter
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext._
@@ -10,9 +9,8 @@ import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.dstream.DStream
 
-import thunder.util.{SaveStreaming, StatCounterArray, LoadParam, LoadStreaming}
-import thunder.util.io.Keys
-import scala.Some
+import org.project.thunder.streaming.util.{SaveStreaming, StatCounterArray, LoadParam, LoadStreaming}
+import org.project.thunder.streaming.util.io.Keys
 
 
 /**

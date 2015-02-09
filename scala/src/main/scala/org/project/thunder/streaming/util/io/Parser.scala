@@ -1,4 +1,4 @@
-package thunder.util.io
+package org.project.thunder.streaming.util.io
 
 import java.nio.{ByteBuffer, ByteOrder}
 import org.apache.spark.mllib.regression.LabeledPoint
@@ -12,7 +12,7 @@ import org.apache.spark.mllib.linalg.Vectors
  * @param nKeys Number of integer keys per data point
  * @param format Byte encoding
  */
-case class Parser(nKeys: Int = 0, format: String = "Int") {
+case class Parser(nKeys: Int = 0, format: String = "int") {
 
   /**
    * Convert an Array[Byte] to Array[Double]
