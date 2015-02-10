@@ -1,6 +1,6 @@
-package thunder.examples
+package org.project.thunder.streaming.examples
 
-import thunder.util.StatCounterArray
+import org.project.thunder.streaming.util.StatCounterArray
 
 object ExampleStatCounterArray {
 

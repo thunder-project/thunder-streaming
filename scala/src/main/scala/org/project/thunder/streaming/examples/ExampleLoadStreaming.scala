@@ -1,10 +1,9 @@
-package thunder.examples
+package org.project.thunder.streaming.examples
 
 import org.apache.spark.SparkConf
-import org.apache.spark.streaming.{Seconds, StreamingContext}
-import thunder.util.LoadStreaming
 import org.apache.spark.streaming._
-import org.apache.spark.streaming.StreamingContext._
+
+import org.project.thunder.streaming.util.ThunderStreamingContext
 
 object ExampleLoadStreaming {
 
@@ -12,7 +11,7 @@ object ExampleLoadStreaming {
 
     val master = args(0)
 
-    val file = args(1)
+    val dataPath = args(1)
 
     val batchTime = args(2).toLong
 
@@ -26,11 +25,13 @@ object ExampleLoadStreaming {
 
     val ssc = new StreamingContext(conf, Seconds(batchTime))
 
-    val data = LoadStreaming.fromBinary(ssc, file)
+    val tssc = new ThunderStreamingContext(ssc)
 
-    data.mapValues(v => v.mkString(" ")).print()
+    val data = tssc.loadStreamingSeries(dataPath, inputFormat="text", nKeys=2)
 
-    data.foreachRDD(rdd => println(rdd.count()))
+    val means = data.seriesMean()
+
+    means.print()
 
     ssc.start()
     ssc.awaitTermination()

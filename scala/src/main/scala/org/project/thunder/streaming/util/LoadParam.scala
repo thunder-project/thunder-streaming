@@ -1,4 +1,4 @@
-package thunder.util
+package org.project.thunder.streaming.util
 
 import scala.io.Source
 

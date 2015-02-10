@@ -1,18 +1,13 @@
-package thunder.streaming
+package org.project.thunder.streaming.regression
 
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.dstream.DStream
 
-import thunder.util.LoadStreaming
-import thunder.util.Save
-import thunder.util.io.Keys
 import org.apache.spark.Logging
 import scala.math.sqrt
-import scala.Some
 import cern.colt.matrix.DoubleFactory2D
 import cern.colt.matrix.DoubleFactory1D
 import cern.colt.matrix.DoubleMatrix2D
@@ -20,6 +15,7 @@ import cern.colt.matrix.DoubleMatrix1D
 import cern.jet.math.Functions.{plus, minus, bindArg2, pow}
 import cern.colt.matrix.linalg.Algebra.DEFAULT.{inverse, mult, transpose}
 
+import org.project.thunder.streaming.util.io.Keys
 
 /** Class for representing parameters and sufficient statistics for a running linear regression model */
 class FittedModel(
@@ -207,27 +203,27 @@ object StatefulLinearRegression {
     ssc.checkpoint(System.getenv("CHECKPOINT"))
 
     /** Load streaming data */
-    val data = LoadStreaming.fromTextWithKeys(ssc, directory, dims.size, dims)
+    //val data = LoadStreaming.fromTextWithKeys(ssc, directory, dims.size, dims)
 
     /** Train Linear Regression models */
-    val state = StatefulLinearRegression.trainStreaming(data, featureKeys)
+    //val state = StatefulLinearRegression.trainStreaming(data, featureKeys)
 
     /** Print output (for testing) */
-    state.mapValues(x => "\n" + "mean: " + "%.5f".format(x.mean) +
-                         "\n" + "count: " + "%.5f".format(x.count) +
-                         "\n" + "variance: " + "%.5f".format(x.variance) +
-                         "\n" + "beta: " + x.beta.toArray.mkString(",") +
-                         "\n" + "R2: " + "%.5f".format(x.R2) +
-                         "\n" + "SSE: " + "%.5f".format(x.sumOfSquaresError) +
-                         "\n" + "SST: " + "%.5f".format(x.sumOfSquaresTotal) +
-                         "\n" + "Xy: " + x.Xy.toArray.mkString(",")).print()
+//    state.mapValues(x => "\n" + "mean: " + "%.5f".format(x.mean) +
+//                         "\n" + "count: " + "%.5f".format(x.count) +
+//                         "\n" + "variance: " + "%.5f".format(x.variance) +
+//                         "\n" + "beta: " + x.beta.toArray.mkString(",") +
+//                         "\n" + "R2: " + "%.5f".format(x.R2) +
+//                         "\n" + "SSE: " + "%.5f".format(x.sumOfSquaresError) +
+//                         "\n" + "SST: " + "%.5f".format(x.sumOfSquaresTotal) +
+//                         "\n" + "Xy: " + x.Xy.toArray.mkString(",")).print()
 
     ///** Save output (for production) */
     //val out = state.mapValues(x => Array(x.R2))
     //Save.saveStreamingDataAsText(out, outputDirectory, Seq("r2"))
 
-    ssc.start()
-    ssc.awaitTermination()
+    //ssc.start()
+    //ssc.awaitTermination()
   }
 
 }
