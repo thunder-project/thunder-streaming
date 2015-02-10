@@ -24,6 +24,7 @@ object ExampleLoadStreaming {
     }
 
     val ssc = new StreamingContext(conf, Seconds(batchTime))
+
     val tssc = new ThunderStreamingContext(ssc)
 
     val data = tssc.loadStreamingSeries(dataPath, inputFormat="text", nKeys=2)
