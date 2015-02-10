@@ -10,16 +10,14 @@ class ThunderStreamingContext(ssc: StreamingContext) {
   def loadStreamingSeries(
       dataPath: String,
       inputFormat: String,
-      nkeys: Option[Int] = None,
-      nvalues: Option[Int] = None,
-      keyType: Option[String] = None,
-      valueType: Option[String] = None): StreamingSeries = {
+      nKeys: Int = 1,
+      dataType: String = "short"): StreamingSeries = {
 
     val loader = new StreamingSeriesLoader(ssc)
 
     inputFormat match {
-      case "text" => loader.fromText(dataPath, nkeys.get)
-      case "binary" => loader.fromBinary(dataPath, nkeys.get, nvalues.get, keyType.get, valueType.get)
+      case "text" => loader.fromText(dataPath, nKeys)
+      case "binary" => loader.fromBinary(dataPath, nKeys, dataType)
       case _ => throw new IllegalArgumentException("Input format must be 'text' or 'binary'")
     }
 

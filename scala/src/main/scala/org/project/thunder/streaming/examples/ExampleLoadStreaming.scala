@@ -26,9 +26,11 @@ object ExampleLoadStreaming {
     val ssc = new StreamingContext(conf, Seconds(batchTime))
     val tssc = new ThunderStreamingContext(ssc)
 
-    val data = tssc.loadStreamingSeries(dataPath, inputFormat="text", nkeys=Some(1))
+    val data = tssc.loadStreamingSeries(dataPath, inputFormat="text", nKeys=2)
 
-    data.print()
+    val means = data.seriesMean()
+
+    means.print()
 
     ssc.start()
     ssc.awaitTermination()

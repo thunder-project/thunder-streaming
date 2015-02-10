@@ -6,13 +6,13 @@ import org.apache.spark.mllib.linalg.Vectors
 
 
 /**
- * Class for loading lines of a data file
+ * Class for loading lines of streaming data files
  * supporting a variety of formats
  *
- * @param nKeys Number of integer keys per data point
+ * @param nkeys Number of keys per record
  * @param format Byte encoding
  */
-case class Parser(nKeys: Int = 0, format: String = "int") {
+case class Parser(nKeys: Int, format: String = "short") {
 
   /**
    * Convert an Array[Byte] to Array[Double]
@@ -56,69 +56,46 @@ case class Parser(nKeys: Int = 0, format: String = "int") {
     }
   }
 
-  /** nKeys per string, but only keep the values */
+  /** Parse all entries as values */
   def get(line: String): Array[Double] = {
     val parts = line.split(' ')
-    val value = parts.slice(nKeys, parts.length).map(_.toDouble)
+    val value = parts.map(_.toDouble)
     value
   }
 
-  /** nKeys per Array[Int], but only keep the values */
+  /** Parse all Ints as values */
   def get(line: Array[Int]): Array[Double] = {
-    val value = line.slice(nKeys, line.length).map(_.toDouble)
+    val value = line.map(_.toDouble)
     value
   }
 
-  /** nKeys per Array[Byte], but only keep the values */
+  /** Parse all bytes into values */
   def get(line: Array[Byte]): Array[Double] = {
-    val value = convertBytes(line).slice(nKeys, line.length)
+    val value = convertBytes(line)
     value
   }
 
-  /** nKeys per string, keep both */
-  def getWithKeys(line: String): (Array[Int], Array[Double]) = {
+  /** Parse first records as keys, then values */
+  def getWithKey(line: String): (List[Int], Array[Double]) = {
     val parts = line.split(' ')
-    val key = parts.slice(0,nKeys).map(_.toDouble.toInt)
+    val key = parts.slice(0, nKeys).map(_.toInt).toList
     val value = parts.slice(nKeys, parts.length).map(_.toDouble)
     (key, value)
   }
 
-  /** nKeys per Array[Int], keep both */
-  def getWithKeys(line: Array[Int]): (Array[Int], Array[Double]) = {
-    val key = line.slice(0,nKeys)
+  /** Parse first Ints as keys, then values */
+  def getWithKey(line: Array[Int]): (List[Int], Array[Double]) = {
+    val key = line.slice(0, nKeys).toList
     val value = line.slice(nKeys, line.length).map(_.toDouble)
     (key, value)
   }
 
-  /** nKeys per Array[Byte], keep both */
-  def getWithKeys(line: Array[Byte]): (Array[Int], Array[Double]) = {
+  /** Parse first Bytes as keys, then values */
+  def getWithKey(line: Array[Byte]): (List[Int], Array[Double]) = {
     val parts = convertBytes(line)
-    val key = parts.slice(0,nKeys).map(_.toInt)
+    val key = parts.slice(0, nKeys).map(_.toInt).toList
     val value = parts.slice(nKeys, line.length)
     (key, value)
-  }
-
-  /** Single label per string, separated by a comma */
-  def getWithLabels(line: String): LabeledPoint = {
-    val parts = line.split(',')
-    val label = parts(0).toDouble
-    val features = Vectors.dense(parts(1).trim().split(' ').map(_.toDouble))
-    LabeledPoint(label, features)
-  }
-
-  /** Single label per Array[Int], first value is the label */
-  def getWithLabels(line: Array[Int]): LabeledPoint = {
-    val label = line(0).toDouble
-    val features = Vectors.dense(line.slice(1, line.length).map(_.toDouble))
-    LabeledPoint(label, features)
-  }
-
-  /** Single label per Array[Byte], first value is the label */
-  def getWithLabels(line: Array[Byte]): LabeledPoint = {
-    val tmp = convertBytes(line)
-    val label = tmp(0).toInt
-    val features = Vectors.dense(tmp.slice(1, line.length))
-    LabeledPoint(label, features)
   }
 
 }

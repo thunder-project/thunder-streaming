@@ -9,7 +9,7 @@ import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.dstream.DStream
 
-import org.project.thunder.streaming.util.{SaveStreaming, StatCounterArray, LoadParam, LoadStreaming}
+import org.project.thunder.streaming.util.{StatCounterArray, LoadParam}
 import org.project.thunder.streaming.util.io.Keys
 
 
@@ -180,19 +180,19 @@ object StatefulBinnedStats {
     val binName = params.getBinName
 
     /** Load streaming data */
-    val data = LoadStreaming.fromBinaryWithKeys(ssc, directory, params.getDims.size, params.getDims, format="short")
+    //val data = LoadStreaming.fromBinaryWithKeys(ssc, directory, params.getDims.size, params.getDims, format="short")
 
     /** Train the models */
-    val state = StatefulBinnedStats.trainStreaming(data, binKeys, binValues(0).length)
+    //val state = StatefulBinnedStats.trainStreaming(data, binKeys, binValues(0).length)
 
     /** Print results (for testing) */
-    val result = state.mapValues(x => Array(x.r2, x.weightedMean(binValues(0))))
+    //val result = state.mapValues(x => Array(x.r2, x.weightedMean(binValues(0))))
 
     /** Collect output */
-    SaveStreaming.asBinaryWithKeys(result, outputDirectory, Seq("r2-" + binName(0), "tuning-" + binName(0)))
+    //SaveStreaming.asBinaryWithKeys(result, outputDirectory, Seq("r2-" + binName(0), "tuning-" + binName(0)))
 
-    ssc.start()
-    ssc.awaitTermination()
+    //ssc.start()
+    //ssc.awaitTermination()
   }
 
 }
