@@ -17,14 +17,13 @@ import logging
 import os
 import sys
 import time
-
 from collections import deque
 from itertools import imap, izip, groupby, tee
 from itertools import product as iproduct
 from operator import itemgetter
 
-from feeder_logger import _logger
-from feeder_regex import RegexMatchToQueueName, RegexMatchToTimepointString
+from thunder.streaming.feeder.utils.feeder_logger import _logger
+from thunder.streaming.feeder.utils.feeder_regex import RegexMatchToQueueName, RegexMatchToTimepointString
 from stream_feeder import build_filecheck_generators, runloop, CopyAndMoveFeeder
 
 
@@ -93,36 +92,14 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         self.last_timepoint = None
         self.last_mismatch = None
         self.last_mismatch_time = None
-        self.mismatch_wait_time = 5.0 # time in s to wait after detecting a mismatch before popping mismatching elements
-
-    # def get_matching_first_entry(self):
-    #     """Pops and returns the first entry across all queues if the first entry
-    #     is the same on all queues, otherwise return None and leave queues unchanged
-    #     """
-    #     matched = None
-    #     try:
-    #         for queue in self.qname_to_queue.itervalues():
-    #             first = queue[0]
-    #             if matched:
-    #                 if not first == matched:
-    #                     matched = None
-    #                     break
-    #             else:
-    #                 matched = first
-    #     except IndexError:
-    #         # don't have anything in at least one queue
-    #         matched = None
-    #
-    #     if matched is not None:
-    #         for queue in self.qname_to_queue.itervalues():
-    #             queue.popleft()
-    #     return matched
+        # time in s to wait after detecting a mismatch before popping mismatching elements:
+        self.mismatch_wait_time = 5.0
 
     def check_and_pop_mismatches(self, first_elts):
         """Checks for a mismatched first elements across queues.
 
         If the first mismatched element has remained the same for longer than
-        self.<SOME ATTRIBUTE>, then start popping out mismatching elements.
+        self.mismatch_wait_time, then start popping out mismatching elements.
 
         Updates self.last_mismatch and self.last_mismatch_time
         """
@@ -200,8 +177,9 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
             expected_size = self.qname_to_expected_size.setdefault(queuename, size)
             if size != expected_size:
                 filtered_timepoints.append(timepoint)
-                _logger.get().warn("Size mismatch on '%s', discarding timepoint '%s'. (Expected %d bytes, got %d bytes.)",
-                                   filename, timepoint, expected_size, size)
+                _logger.get().warn(
+                    "Size mismatch on '%s', discarding timepoint '%s'. (Expected %d bytes, got %d bytes.)",
+                    filename, timepoint, expected_size, size)
         if filtered_timepoints:
             return [filename for filename in filenames if
                     self.fname_to_timepoint_fcn(os.path.basename(filename)) not in filtered_timepoints]

@@ -47,10 +47,9 @@ import logging
 import os
 import sys
 import tempfile
-
 import numpy as np
 
-from feeder_logger import _logger
+from thunder.streaming.feeder.utils.feeder_logger import _logger
 from stream_feeder import build_filecheck_generators, runloop
 from grouping_stream_feeder import SyncCopyAndMoveFeeder, getFilenamePrefix, getFilenamePostfix, get_parsing_functions
 

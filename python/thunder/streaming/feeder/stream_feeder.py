@@ -18,9 +18,9 @@ import sys
 import tempfile
 import time
 
-from feeder_logger import _logger
-from feeder_regex import RegexMatchToPredicate
-from updating_walk import updating_walk as uw
+from thunder.streaming.feeder.utils.feeder_logger import _logger
+from thunder.streaming.feeder.utils.feeder_regex import RegexMatchToPredicate
+from thunder.streaming.feeder.utils.updating_walk import updating_walk as uw
 
 
 class Feeder(object):

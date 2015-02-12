@@ -10,13 +10,13 @@ THUNDER_STREAMING_DIR=/groups/freeman/home/swisherj/thunder-streaming
 MAX_FILES=40
 
 # local testing directories - leave commented out for use on cluster:
-# IMAGING_INPUT_DIR=/mnt/data/data/from_nick/demo_2015_01_09_subset/registered_im/
-# BEHAV_INPUT_DIR=/mnt/data/data/from_nick/demo_2015_01_09_subset/registered_bv/
-# SPARK_OUTPUT_DIR=/mnt/tmpram/sparkinputdir/
-# # TMP_OUTPUT_DIR must be on the same filesystem as SPARK_OUTPUT_DIR:
-# TMP_OUTPUT_DIR=/mnt/tmpram/
-# THUNDER_STREAMING_DIR=/mnt/data/src/thunder_streaming_mainline_1501
-# MAX_FILES=10
+IMAGING_INPUT_DIR=/mnt/data/data/from_nick/demo_2015_01_09_subset/registered_im/
+BEHAV_INPUT_DIR=/mnt/data/data/from_nick/demo_2015_01_09_subset/registered_bv/
+SPARK_OUTPUT_DIR=/mnt/tmpram/sparkinputdir/
+# TMP_OUTPUT_DIR must be on the same filesystem as SPARK_OUTPUT_DIR:
+TMP_OUTPUT_DIR=/mnt/tmpram/
+THUNDER_STREAMING_DIR=/mnt/data/src/thunder_streaming_mainline_1501
+MAX_FILES=10
 
 export TMP=$TMP_OUTPUT_DIR
 rm $SPARK_OUTPUT_DIR/*

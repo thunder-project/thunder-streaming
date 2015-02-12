@@ -12,7 +12,7 @@ python updating_walk.py path_to_directory [time_per_update [start_filename]]
 import operator
 import os
 
-from feeder_logger import _logger
+from thunder.streaming.feeder.utils.feeder_logger import _logger
 
 
 def updating_walk(dirpath, startpath=None, filefilterfunc=None):
