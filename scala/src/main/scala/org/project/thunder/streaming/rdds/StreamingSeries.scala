@@ -4,7 +4,7 @@ import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.util.StatCounter
 import org.apache.spark.streaming.StreamingContext._
 
-class StreamingSeries(dstream: DStream[(List[Int], Array[Double])]) {
+class StreamingSeries(dstream: DStream[(List[Int], Array[Double])]) extends StreamingData {
 
   /** State updating function that updates statistics for each key. */
   val runningStats = (values: Seq[Array[Double]], state: Option[StatCounter]) => {
