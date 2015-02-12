@@ -2,9 +2,9 @@ import errno
 import os
 import time
 
-from thunder.streaming.feeder.utils.feeder_filenames import getFilenamePostfix, getFilenamePrefix
-from thunder.streaming.feeder.utils.feeder_logger import _logger
-from thunder.streaming.feeder.utils.feeder_regex import RegexMatchToQueueName, RegexMatchToTimepointString
+from thunder.streaming.feeder.utils.filenames import getFilenamePostfix, getFilenamePrefix
+from thunder.streaming.feeder.utils.logger import _logger
+from thunder.streaming.feeder.utils.regex import RegexMatchToQueueName, RegexMatchToTimepointString
 from thunder.streaming.feeder.utils.updating_walk import updating_walk as uw
 
 

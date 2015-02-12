@@ -16,8 +16,8 @@ import sys
 from thunder.streaming.feeder.core import build_filecheck_generators, runloop
 from thunder.streaming.feeder.feeders import CopyAndMoveFeeder
 
-from thunder.streaming.feeder.utils.feeder_logger import _logger
-from thunder.streaming.feeder.utils.feeder_regex import RegexMatchToPredicate
+from thunder.streaming.feeder.utils.logger import _logger
+from thunder.streaming.feeder.utils.regex import RegexMatchToPredicate
 
 
 def parse_options():

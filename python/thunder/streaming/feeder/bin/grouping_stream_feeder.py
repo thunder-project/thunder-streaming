@@ -16,7 +16,7 @@ b_03, after moving the a_01 b_01 pair it will block waiting for a b_02 to show u
 import logging
 import sys
 
-from thunder.streaming.feeder.utils.feeder_logger import _logger
+from thunder.streaming.feeder.utils.logger import _logger
 from thunder.streaming.feeder.core import build_filecheck_generators, runloop, get_parsing_functions
 from thunder.streaming.feeder.feeders import SyncCopyAndMoveFeeder
 

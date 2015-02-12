@@ -6,7 +6,7 @@ import logging
 import sys
 
 from thunder.streaming.feeder.core import build_filecheck_generators, runloop
-from thunder.streaming.feeder.utils.feeder_logger import _logger
+from thunder.streaming.feeder.utils.logger import _logger
 from grouping_series_stream_feeder import SyncSeriesFeeder, get_parsing_functions
 
 

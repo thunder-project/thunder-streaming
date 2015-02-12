@@ -47,7 +47,7 @@ import logging
 import os
 import sys
 
-from thunder.streaming.feeder.utils.feeder_logger import _logger
+from thunder.streaming.feeder.utils.logger import _logger
 from thunder.streaming.feeder.core import build_filecheck_generators, runloop, get_parsing_functions
 from thunder.streaming.feeder.feeders import SyncSeriesFeeder
 
