@@ -2,11 +2,6 @@ package org.project.thunder.streaming.util.launch
 
 import org.project.thunder.streaming.rdds.StreamingData
 
-
-
-import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
-import scala.reflect._
 import scala.util.{Failure, Success, Try}
 import scala.xml.{NodeSeq, Node}
 
@@ -15,7 +10,8 @@ import scala.xml.{NodeSeq, Node}
  */
 class RunSpecification(path: String) {
 
-  val analyses = getAnalysesFromXML(scala.xml.XML.loadFile(path))
+  type AnalysesList = List[(Try[Analysis[_ <: StreamingData]], Try[AnalysisOutput[_ <: StreamingData]])]
+  val analyses: AnalysesList = getAnalysesFromXML(scala.xml.XML.loadFile(path))
 
   object Analysis {
     /*
@@ -35,7 +31,8 @@ class RunSpecification(path: String) {
       // Try to find a class with the given type name
       def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: Analysis[StreamingData]]] = {
         nodes \ "name" match {
-          case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text).asSubclass(Analysis[StreamingData]))
+          case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text)
+                                                          .asSubclass(classOf[Analysis[StreamingData]]))
           case _ => Failure(new BadAnalysisConfigException("Name not correctly specified in XML configuration file."))
         }
       }
@@ -51,10 +48,10 @@ class RunSpecification(path: String) {
         case Success(clazz) => {
           extractParameters(nodes) match {
             case Success(parameters) => Try(instantiateAnalysis(clazz)(parameters))
-            case _ => _
+            case Failure(f) => Failure(f)
           }
         }
-        case _ => _
+        case Failure(f) => Failure(f)
       }
     }
 
@@ -66,7 +63,8 @@ class RunSpecification(path: String) {
   }
 
   trait Analysis[T <: StreamingData] {
-    def run(output: AnalysisOutput[T]): Unit;
+    // TODO: There doesn't seem to be much else we can do as far as better type-checking is concerned
+    def run(output: AnalysisOutput[_ <: StreamingData]): Unit;
   }
 
   object AnalysisOutput {
@@ -89,7 +87,8 @@ class RunSpecification(path: String) {
       // Try to find a class with the given type name
       def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: AnalysisOutput[StreamingData]]] = {
         nodes \ "name" match {
-          case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text).asSubclass(AnalysisOutput[StreamingData]))
+          case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text)
+                                                          .asSubclass(classOf[AnalysisOutput[StreamingData]]))
           case _ => Failure(new BadOutputConfigException("Name not correctly specified in XML configuration file."))
         }
       }
@@ -105,10 +104,10 @@ class RunSpecification(path: String) {
         case Success(clazz) => {
           extractParameters(nodes) match {
             case Success(parameters) => Try(instantiateAnalysisOutput(clazz)(parameters))
-            case _ => _
+            case Failure(f) => Failure(f)
           }
         }
-        case _ => _
+        case Failure(f) => Failure(f)
       }
     }
 
@@ -119,11 +118,12 @@ class RunSpecification(path: String) {
   }
 
   abstract class AnalysisOutput[T <: StreamingData](val params: Map[String, String] = Map()) {
-    def handleResults(results: T): Unit
+    // TODO: (See definition of Analysis trait)
+    def handleResults(results: StreamingData): Unit
   }
 
-  def getAnalysesFromXML(nodes: NodeSeq): List[(Try[Analysis[_]], Try[AnalysisOutput[_]])] = {
-    nodes.foldLeft(List[Pair[Try[Analysis[_]], Try[AnalysisOutput[_]]]]()) {
+  def getAnalysesFromXML(nodes: NodeSeq): AnalysesList = {
+    nodes.foldLeft(List().asInstanceOf[AnalysesList]) {
       (analysisList, node) => Pair(Analysis.fromXMLNode(node), AnalysisOutput.fromXMLNode(node)) :: analysisList
     }
   }
