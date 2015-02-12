@@ -1,30 +1,116 @@
-#!/usr/bin/env python
-"""An elaboration on stream_feeder that watches for pairs of files with matching suffixes. Only when a matching
-pair is found will both files be moved into the output directory.
-
-When run as a script, this file expects to find matching files in two separate directory trees. These files are
-assumed to represent imaging and behavioral data from the same point in time.
-
-Files are matched based on having identical suffixes after the first appearance of a delimiter character '_', excluding
-filename extensions. So 'foo_abc.txt' and 'bar_abc' match, but 'foo_123' and 'bar_124' do not.
-
-Note that this script will block forever waiting for a match. So for instance given files a_01, a_02, a_03, b_01, and
-b_03, after moving the a_01 b_01 pair it will block waiting for a b_02 to show up.
+"""Feeder, Cleaner, and subclasses.
 
 """
-
-import logging
-import os
-import sys
-import time
 from collections import deque
-from itertools import imap, izip, groupby, tee
+from itertools import imap, groupby, tee, izip
 from itertools import product as iproduct
+import numpy as np
 from operator import itemgetter
+import os
+import shutil
+import tempfile
+import time
 
+from thunder.streaming.feeder.transpose import transpose_files, transpose_files_to_series, \
+    transpose_files_to_linear_series
+from thunder.streaming.feeder.utils.feeder_filenames import getFilenamePostfix, getFilenamePrefix
 from thunder.streaming.feeder.utils.feeder_logger import _logger
-from thunder.streaming.feeder.utils.feeder_regex import RegexMatchToQueueName, RegexMatchToTimepointString
-from stream_feeder import build_filecheck_generators, runloop, CopyAndMoveFeeder
+
+
+class Feeder(object):
+    """Superclass for objects that take in a set of filenames and push the corresponding files out
+    to a consumer.
+    """
+    def feed(self, filenames):
+        """Abstract method that when called, pushes the passed files out to a consumer.
+
+        Implementations should return a list of the filenames that have been successfully pushed out
+        to the consumer. This may be a subset of those passed in the feed() call.
+        """
+        raise NotImplementedError
+
+    def clean(self):
+        """Performs any required cleanup, such as deleting copied files.
+
+        Implementations should ensure that any cleanup actions are safe to perform (e.g. the ultimate
+        consumer has already consumed the files). If there are no safe cleanup actions, this method should
+        return. Future calls may result in cleanup actions being performed.
+
+        Implementations should return a list of filenames that are deleted by the clean() action.
+
+        This implementation does nothing.
+        """
+        return []
+
+
+class LastModifiedCleaner(Feeder):
+    """Abstract subclass of Feeder that provides a "delete after delay" clean() method.
+    """
+    def __init__(self, feeder_dir, linger_time):
+        """
+        Specifies a directory and a delay time after which files found in the directory are to be deleted.
+
+        The delay time is measured from the file's last modification time.
+
+        Parameters
+        ----------
+        feeder_dir: string
+            Path to directory from which files are to be deleted.
+        linger_time: float
+            Time in seconds.
+        :return:
+        """
+        self.feeder_dir = str(feeder_dir)
+        self.linger_time = float(linger_time)
+
+        if not os.path.isdir(feeder_dir):
+            raise ValueError("Feeder directory must be an existing directory path; got '%s'" % self.feeder_dir)
+
+    def clean(self):
+        """Deletes files found in self.feeder_dir whose last modified time is longer ago than self.linger_time.
+        """
+        if self.linger_time < 0:
+            return []
+        now = time.time()
+        removed = []
+        for fname in os.listdir(self.feeder_dir):
+            absname = os.path.join(self.feeder_dir, fname)
+            if os.path.isfile(absname) and now - os.stat(absname).st_mtime > self.linger_time:
+                os.remove(absname)
+                removed.append(fname)
+        removed.sort()
+        return removed
+
+
+class CopyAndMoveFeeder(LastModifiedCleaner):
+    """Concrete feeder implementation that copies files into the specified output directory.
+
+    This first copies files into a temporary directory, which should be on the same filesystem
+    as the ultimate output directory. (This can be controlled by the TMP environment var - see documentation
+    in the python tempfile module.) After this copy, the files are moved into the final output directory
+    by an os.rename() call, which advertises that it will be an atomic operation for files on the same filesystem.
+    This rename() call may throw an exception if the temp directory is on a different filesystem.
+    """
+    @classmethod
+    def fromOptions(cls, opts):
+        return cls(opts.outdir, opts.linger_time)
+
+    def feed(self, filenames):
+        copydir = tempfile.mkdtemp()
+        try:
+            basenames = []
+            for fname in filenames:
+                bname = os.path.basename(fname)
+                shutil.copyfile(fname, os.path.join(copydir, bname))
+                basenames.append(bname)
+            for fname in basenames:
+                srcname = os.path.join(copydir, fname)
+                # touch prior to atomic move operation to delay slurping by spark
+                os.utime(srcname, None)
+                os.rename(srcname, os.path.join(self.feeder_dir, fname))
+        finally:
+            shutil.rmtree(copydir)
+        return filenames
 
 
 def unique_justseen(iterable, key=None):
@@ -36,33 +122,17 @@ def unique_justseen(iterable, key=None):
     return imap(next, imap(itemgetter(1), groupby(iterable, key)))
 
 
-# next two functions from stackoverflow user hughdbrown:
-# http://stackoverflow.com/questions/3755136/pythonic-way-to-check-if-a-list-is-sorted-or-not/4404056#4404056
 def pairwise(iterable):
+    # this and is_sorted from stackoverflow user hughdbrown:
+    # http://stackoverflow.com/questions/3755136/pythonic-way-to-check-if-a-list-is-sorted-or-not/4404056#4404056
     a, b = tee(iterable)
     next(b, None)
     return izip(a, b)
 
 
-# tests for strict ordering, will be false for dups
 def is_sorted(iterable, key=lambda a, b: a < b):
+    # tests for strict ordering, will be false for dups
     return all(key(a, b) for a, b in pairwise(iterable))
-
-
-def getFilenamePrefix(filename, delim='_'):
-    return getFilenamePrefixAndPostfix(filename, delim)[0]
-
-
-def getFilenamePostfix(filename, delim='_'):
-    return getFilenamePrefixAndPostfix(filename, delim)[1]
-
-
-def getFilenamePrefixAndPostfix(filename, delim='_'):
-    bname = os.path.splitext(os.path.basename(filename))[0]
-    splits = bname.split(delim, 1)
-    prefix = splits[0]
-    postfix = splits[1] if len(splits) > 1 else ''
-    return prefix, postfix
 
 
 class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
@@ -250,66 +320,77 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         return super(SyncCopyAndMoveFeeder, self).feed(fullnames)
 
 
-def parse_options():
-    import optparse
-    parser = optparse.OptionParser(usage="%prog imgdatadir behavdatadir outdir [options]")
-    parser.add_option("-p", "--poll-time", type="float", default=1.0,
-                      help="Time between checks of datadir in s, default %default")
-    parser.add_option("-m", "--mod-buffer-time", type="float", default=1.0,
-                      help="Time to wait after last file modification time before feeding file into stream, "
-                           "default %default")
-    parser.add_option("-l", "--linger-time", type="float", default=5.0,
-                      help="Time to wait after feeding into stream before deleting intermediate file "
-                           "(negative time disables), default %default")
-    parser.add_option("--max-files", type="int", default=-1,
-                      help="Max files to copy in one iteration "
-                           "(negative disables), default %default")
-    parser.add_option("--imgprefix", default="img")
-    parser.add_option("--behavprefix", default="behav")
-    parser.add_option("--prefix-regex-file", default=None)
-    parser.add_option("--timepoint-regex-file", default=None)
-    opts, args = parser.parse_args()
+class SyncSeriesFeeder(SyncCopyAndMoveFeeder):
+    """A Feeder implementation that looks for matching pairs of files, as in SyncCopyAndMoveFeeder, and
+    them writes out these matching pairs as a single Series binary file.
 
-    if len(args) != 3:
-        print >> sys.stderr, parser.get_usage()
-        sys.exit(1)
+    Expected file prefixes must be given at object construction. The Series data will be written out
+    in the order given by this prefixes argument - so for instance in order to write out behavioral data
+    after imaging data in the Series binary file output, prefixes should be specified as (imagefileprefix,
+    behaviorfileprefix), and not the other way around.
 
-    setattr(opts, "imgdatadir", args[0])
-    setattr(opts, "behavdatadir", args[1])
-    setattr(opts, "outdir", args[2])
+    If a shape tuple is given at construction, then the output will have valid subscript indices according
+    to this expected shape. See transpose_files() (no shape passed) and transpose_files_to_series() (with shape).
+    """
+    def __init__(self, feeder_dir, linger_time, prefixes, shape=None, linear=False, dtype='uint16', indtype='uint16',
+                 fname_to_qname_fcn=getFilenamePrefix, fname_to_timepoint_fcn=getFilenamePostfix,
+                 check_file_size=False, check_skip_in_sequence=True):
+        super(SyncSeriesFeeder, self).__init__(feeder_dir, linger_time, prefixes,
+                                               fname_to_qname_fcn=fname_to_qname_fcn,
+                                               fname_to_timepoint_fcn=fname_to_timepoint_fcn,
+                                               check_file_size_mismatch=check_file_size,
+                                               check_skip_in_sequence=check_skip_in_sequence)
+        self.prefixes = list(prefixes)
+        self.shape = shape
+        self.linear = linear
+        self.dtype = dtype
+        self.indtype = indtype
 
-    return opts
+    def get_series_filename(self, srcfilenames, bytesize):
+        startcount = self.fname_to_timepoint_fcn(os.path.basename(srcfilenames[0]))
+        endcount = self.fname_to_timepoint_fcn(os.path.basename(srcfilenames[-1]))
+        return "series-%s-%s_bytes%d.bin" % (startcount, endcount, bytesize)
 
+    def feed(self, filenames):
+        fullnames = self.match_filenames(filenames)
 
-def get_parsing_functions(opts):
-    if opts.prefix_regex_file:
-        fname_to_qname_fcn = RegexMatchToQueueName.fromFile(opts.prefix_regex_file).queueName
-    else:
-        fname_to_qname_fcn = getFilenamePrefix
-    if opts.timepoint_regex_file:
-        fname_to_timepoint_fcn = RegexMatchToTimepointString.fromFile(opts.timepoint_regex_file).timepoint
-    else:
-        fname_to_timepoint_fcn = getFilenamePostfix
-    return fname_to_qname_fcn, fname_to_timepoint_fcn
+        if fullnames:
+            tmpfd, tmpfname = tempfile.mkstemp()
+            tmpfp = os.fdopen(tmpfd, 'w')
+            try:
+                nindices_written = 0
+                ninput_files = 0
+                for prefix in self.prefixes:
+                    curnames = [fn for fn in fullnames if self.fname_to_qname_fcn(fn) == prefix]
+                    curnames.sort()
+                    ninput_files = len(curnames)  # should be same for all prefixes
+                    if (not self.linear) and (self.shape is None):
+                        nindices_written += transpose_files(curnames, tmpfp, dtype=self.dtype)
+                    elif self.linear:
+                        nindices_written += transpose_files_to_linear_series(curnames, tmpfp,
+                                                                             dtype=self.dtype, indtype=self.indtype,
+                                                                             startlinidx=nindices_written)
+                    else:
+                        nindices_written += transpose_files_to_series(curnames, tmpfp, tuple(self.shape),
+                                                                      dtype=self.dtype, indtype=self.indtype,
+                                                                      startlinidx=nindices_written)
+                tmpfp.close()
 
+                record_vals_size = ninput_files * np.dtype(self.dtype).itemsize
+                if self.linear:
+                    recordsize = np.dtype(self.dtype).itemsize + record_vals_size
+                elif self.shape:
+                    recordsize = len(self.shape)*2 + record_vals_size  # key size in bytes + values size in bytes
+                else:
+                    recordsize = record_vals_size
+                newname = self.get_series_filename(fullnames, recordsize)
 
-def main():
-    _handler = logging.StreamHandler(sys.stdout)
-    _handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s'))
-    _logger.get().addHandler(_handler)
-    _logger.get().setLevel(logging.INFO)
-
-    opts = parse_options()
-
-    fname_to_qname_fcn, fname_to_timepoint_fcn = get_parsing_functions(opts)
-    feeder = SyncCopyAndMoveFeeder(opts.outdir, opts.linger_time, (opts.imgprefix, opts.behavprefix),
-                                   fname_to_qname_fcn=fname_to_qname_fcn,
-                                   fname_to_timepoint_fcn=fname_to_timepoint_fcn)
-
-    file_checkers = build_filecheck_generators((opts.imgdatadir, opts.behavdatadir), opts.mod_buffer_time,
-                                               max_files=opts.max_files,
-                                               filename_predicate=fname_to_qname_fcn)
-    runloop(file_checkers, feeder, opts.poll_time)
-
-if __name__ == "__main__":
-    main()
+                # touch prior to atomic move operation to delay slurping by spark
+                os.utime(tmpfname, None)
+                os.rename(tmpfname, os.path.join(self.feeder_dir, newname))
+            finally:
+                if not tmpfp.closed:
+                    tmpfp.close()
+                if os.path.isfile(tmpfname):
+                    os.remove(tmpfname)
+        return fullnames
