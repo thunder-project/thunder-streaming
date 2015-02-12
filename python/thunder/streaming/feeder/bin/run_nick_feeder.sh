@@ -1,4 +1,6 @@
 #!/bin/bash
+FEEDER_SUBDIR=python/thunder/streaming/feeder/
+
 IMAGING_INPUT_DIR=/groups/freeman/freemanlab/Streaming/demo_2015_01_16/registered_im
 BEHAV_INPUT_DIR=/groups/freeman/freemanlab/Streaming/demo_2015_01_16/registered_bv
 SPARK_OUTPUT_DIR=/nobackup/freeman/streaminginput/
@@ -21,6 +23,6 @@ rm $SPARK_OUTPUT_DIR/*
 
 umask 000
 
-$THUNDER_STREAMING_DIR/python/thunderfeeder/grouping_series_stream_feeder.py \
-$IMAGING_INPUT_DIR  $BEHAV_INPUT_DIR  $SPARK_OUTPUT_DIR \
---max-files $MAX_FILES  --imgprefix images --behavprefix behaviour -l 60.0
+"$THUNDER_STREAMING_DIR"/"$FEEDER_SUBDIR"/grouping_series_stream_feeder.py \
+"$IMAGING_INPUT_DIR"  "$BEHAV_INPUT_DIR"  "$SPARK_OUTPUT_DIR" \
+--max-files "$MAX_FILES"  --imgprefix images --behavprefix behaviour -l 60.0
