@@ -16,7 +16,7 @@ b_03, after moving the a_01 b_01 pair it will block waiting for a b_02 to show u
 import logging
 import sys
 
-from thunder.streaming.feeder.utils.logger import _logger
+from thunder.streaming.feeder.utils.logger import global_logger
 from thunder.streaming.feeder.core import build_filecheck_generators, runloop, get_parsing_functions
 from thunder.streaming.feeder.feeders import SyncCopyAndMoveFeeder
 
@@ -55,8 +55,8 @@ def parse_options():
 def main():
     _handler = logging.StreamHandler(sys.stdout)
     _handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s'))
-    _logger.get().addHandler(_handler)
-    _logger.get().setLevel(logging.INFO)
+    global_logger.get().addHandler(_handler)
+    global_logger.get().setLevel(logging.INFO)
 
     opts = parse_options()
 

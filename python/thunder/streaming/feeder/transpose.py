@@ -30,6 +30,8 @@ def transpose_files(filenames, outfp, dtype='uint16'):
 
 
 def _write_series_records(filenames, ndim=1, dtype='uint16', indtype='uint16'):
+    """Transposes the contents of the passed filenames into a new (large) in-memory buffer
+    """
     outbuf = None
     ary_size = 0
     incr = len(filenames) + ndim

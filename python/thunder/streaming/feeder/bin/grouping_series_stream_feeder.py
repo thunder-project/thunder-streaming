@@ -47,16 +47,16 @@ import logging
 import os
 import sys
 
-from thunder.streaming.feeder.utils.logger import _logger
+from thunder.streaming.feeder.utils.logger import global_logger
 from thunder.streaming.feeder.core import build_filecheck_generators, runloop, get_parsing_functions
 from thunder.streaming.feeder.feeders import SyncSeriesFeeder
 
 
-def get_last_matching_directory(directoryPathPattern):
-    dirnames = [fname for fname in glob.glob(directoryPathPattern) if os.path.isdir(fname)]
+def get_last_matching_directory(directory_path_pattern):
+    dirnames = [fname for fname in glob.glob(directory_path_pattern) if os.path.isdir(fname)]
     if dirnames:
         return sorted(dirnames)[-1]
-    raise ValueError("No directories found matching pattern '%s'" % directoryPathPattern)
+    raise ValueError("No directories found matching pattern '%s'" % directory_path_pattern)
 
 
 def parse_options():
@@ -103,13 +103,13 @@ def parse_options():
 def main():
     _handler = logging.StreamHandler(sys.stdout)
     _handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s'))
-    _logger.get().addHandler(_handler)
-    _logger.get().setLevel(logging.INFO)
+    global_logger.get().addHandler(_handler)
+    global_logger.get().setLevel(logging.INFO)
 
     opts = parse_options()
 
-    _logger.get().info("Reading images from: %s", opts.imgdatadir)
-    _logger.get().info("Reading behavioral/ephys data from: %s", opts.behavdatadir)
+    global_logger.get().info("Reading images from: %s", opts.imgdatadir)
+    global_logger.get().info("Reading behavioral/ephys data from: %s", opts.behavdatadir)
 
     fname_to_qname_fcn, fname_to_timepoint_fcn = get_parsing_functions(opts)
     feeder = SyncSeriesFeeder(opts.outdir, opts.linger_time, (opts.imgprefix, opts.behavprefix),

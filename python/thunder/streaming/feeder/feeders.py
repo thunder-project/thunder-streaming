@@ -1,5 +1,4 @@
-"""Feeder, Cleaner, and subclasses.
-
+"""Feeder and subclasses, which abstract a queue or queues of files.
 """
 from collections import deque
 from itertools import imap, groupby, tee, izip
@@ -14,7 +13,7 @@ import time
 from thunder.streaming.feeder.transpose import transpose_files, transpose_files_to_series, \
     transpose_files_to_linear_series
 from thunder.streaming.feeder.utils.filenames import getFilenamePostfix, getFilenamePrefix
-from thunder.streaming.feeder.utils.logger import _logger
+from thunder.streaming.feeder.utils.logger import global_logger
 
 
 class Feeder(object):
@@ -211,7 +210,7 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
                                 if q and q[0] < next_elt:
                                     discard = q.popleft()
                                     popping = True
-                                    _logger.get().warn("Discarding item '%s' from queue '%s'; " % (discard, qname) +
+                                    global_logger.get().warn("Discarding item '%s' from queue '%s'; " % (discard, qname) +
                                                        "waited for match for more than %g s" % self.mismatch_wait_time)
                         # finished popping all mismatching elements less than next_elt
                         # we might have a match at this point, but wait for next iteration to pick up
@@ -247,7 +246,7 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
             expected_size = self.qname_to_expected_size.setdefault(queuename, size)
             if size != expected_size:
                 filtered_timepoints.append(timepoint)
-                _logger.get().warn(
+                global_logger.get().warn(
                     "Size mismatch on '%s', discarding timepoint '%s'. (Expected %d bytes, got %d bytes.)",
                     filename, timepoint, expected_size, size)
         if filtered_timepoints:
@@ -262,7 +261,7 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
             return
         cur_timepoint = int(timepoint_string)
         if cur_timepoint != self.last_timepoint + 1:
-            _logger.get().warn("Missing timepoints detected, went from '%d' to '%d'",
+            global_logger.get().warn("Missing timepoints detected, went from '%d' to '%d'",
                                self.last_timepoint, cur_timepoint)
         self.last_timepoint = cur_timepoint
 
@@ -276,11 +275,11 @@ class SyncCopyAndMoveFeeder(CopyAndMoveFeeder):
         for filename in filenames:
             qname = self.fname_to_qname_fcn(filename)
             if qname is None:
-                _logger.get().warn("Could not get queue name for file '%s', skipping" % filename)
+                global_logger.get().warn("Could not get queue name for file '%s', skipping" % filename)
                 continue
             tpname = self.fname_to_timepoint_fcn(filename)
             if tpname is None:
-                _logger.get().warn("Could not get timepoint for file '%s', skipping" % filename)
+                global_logger.get().warn("Could not get timepoint for file '%s', skipping" % filename)
                 continue
             self.qname_to_queue[qname].append(tpname)
             self.keys_to_fullnames[(qname, tpname)] = filename

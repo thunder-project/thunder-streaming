@@ -1,3 +1,5 @@
+"""Helper functions for parsing passed filenames.
+"""
 import os
 
 

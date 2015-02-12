@@ -1,9 +1,11 @@
+"""Core functions used by the Thunder streaming feeder scripts, including asynchronous checking for new files.
+"""
 import errno
 import os
 import time
 
 from thunder.streaming.feeder.utils.filenames import getFilenamePostfix, getFilenamePrefix
-from thunder.streaming.feeder.utils.logger import _logger
+from thunder.streaming.feeder.utils.logger import global_logger
 from thunder.streaming.feeder.utils.regex import RegexMatchToQueueName, RegexMatchToTimepointString
 from thunder.streaming.feeder.utils.updating_walk import updating_walk as uw
 
@@ -36,7 +38,7 @@ def file_check_generator(source_dir, mod_buffer_time, max_files=-1, filename_pre
         except StopIteration:
             # no files left, restart after polling interval
             if not filebatch:
-                _logger.get().info("Out of files, waiting...")
+                global_logger.get().info("Out of files, waiting...")
             walker = uw(source_dir, walker_restart_file, filefilterfunc=filename_predicate)
         yield filebatch
 
@@ -64,11 +66,11 @@ def runloop(file_checkers, feeder, poll_time):
             # this should never throw StopIteration, will just yield an empty list if nothing is avail:
             filebatch = feeder.feed(next(file_checker))
             if filebatch:
-                _logger.get().info("Pushed %d files, last: %s", len(filebatch), os.path.basename(filebatch[-1]))
+                global_logger.get().info("Pushed %d files, last: %s", len(filebatch), os.path.basename(filebatch[-1]))
 
         removedfiles = feeder.clean()
         if removedfiles:
-            _logger.get().info("Removed %d temp files, last: %s", len(removedfiles), os.path.basename(removedfiles[-1]))
+            global_logger.get().info("Removed %d temp files, last: %s", len(removedfiles), os.path.basename(removedfiles[-1]))
 
         next_time = last_time + poll_time
         try:

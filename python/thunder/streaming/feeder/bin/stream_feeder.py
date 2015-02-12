@@ -16,7 +16,7 @@ import sys
 from thunder.streaming.feeder.core import build_filecheck_generators, runloop
 from thunder.streaming.feeder.feeders import CopyAndMoveFeeder
 
-from thunder.streaming.feeder.utils.logger import _logger
+from thunder.streaming.feeder.utils.logger import global_logger
 from thunder.streaming.feeder.utils.regex import RegexMatchToPredicate
 
 
@@ -52,8 +52,8 @@ def parse_options():
 def main():
     _handler = logging.StreamHandler(sys.stdout)
     _handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s'))
-    _logger.get().addHandler(_handler)
-    _logger.get().setLevel(logging.INFO)
+    global_logger.get().addHandler(_handler)
+    global_logger.get().setLevel(logging.INFO)
 
     opts = parse_options()
 
