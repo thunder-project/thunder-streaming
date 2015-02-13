@@ -25,6 +25,9 @@ trait StreamingData[K, V, +Self <: StreamingData[K, V, Self]] {
     create(output)
   }
 
+  /** Print the records (useful for debugging) **/
+  def print() = Unit
+
   protected def create(dstream: DStream[(K, V)]): Self
 
 }
