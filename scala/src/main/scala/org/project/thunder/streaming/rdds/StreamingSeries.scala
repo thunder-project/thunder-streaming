@@ -6,8 +6,8 @@ import org.apache.spark.streaming.StreamingContext._
 import org.project.thunder.streaming.util.counters.StatUpdater
 import org.project.thunder.streaming.util.io.{BinaryWriter, TextWriter}
 
-class StreamingSeries(val dstream: DStream[(List[Int], Array[Double])])
-  extends StreamingData[List[Int], Array[Double], StreamingSeries] {
+class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
+  extends StreamingData[Int, Array[Double], StreamingSeries] {
 
   /** Compute a running estate of several statistics */
   def seriesStat(): StreamingSeries = {
@@ -34,10 +34,10 @@ class StreamingSeries(val dstream: DStream[(List[Int], Array[Double])])
   }
 
   /** Print keys and values */
-  override def print(): Unit = {
-    dstream.map{case (k, v) => "(" + k.mkString(",") + ") " + " (" + v.mkString(",") + ")"}.print()
+  override def print() {
+    dstream.map{case (k, v) => "(" + k.toString + ") " + " (" + v.mkString(",") + ")"}.print()
   }
 
-  override def create(dstream: DStream[(List[Int], Array[Double])]) = new StreamingSeries(dstream)
+  override def create(dstream: DStream[(Int, Array[Double])]) = new StreamingSeries(dstream)
 
 }

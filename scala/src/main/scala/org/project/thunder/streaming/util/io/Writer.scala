@@ -30,7 +30,7 @@ abstract class Writer {
     }
   }
 
-  def withKeys(data: DStream[(List[Int], Array[Double])], directory: String, fileName: Seq[String]) {
+  def withKeys(data: DStream[(Int, Array[Double])], directory: String, fileName: Seq[String]) {
     data.foreachRDD{rdd =>
       if (rdd.count() > 0) {
         val sorted = rdd.sortByKey().values

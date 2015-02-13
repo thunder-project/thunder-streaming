@@ -9,10 +9,9 @@ import org.apache.spark.mllib.linalg.Vectors
  * Class for loading lines of streaming data files
  * supporting a variety of formats
  *
- * @param nkeys Number of keys per record
  * @param format Byte encoding
  */
-case class Parser(nKeys: Int, format: String = "short") {
+case class Parser(format: String = "short") {
 
   /**
    * Convert an Array[Byte] to Array[Double]
@@ -76,25 +75,25 @@ case class Parser(nKeys: Int, format: String = "short") {
   }
 
   /** Parse first records as keys, then values */
-  def getWithKey(line: String): (List[Int], Array[Double]) = {
+  def getWithKey(line: String): (Int, Array[Double]) = {
     val parts = line.split(' ')
-    val key = parts.slice(0, nKeys).map(_.toInt).toList
-    val value = parts.slice(nKeys, parts.length).map(_.toDouble)
+    val key = parts(0).toInt
+    val value = parts.slice(1, parts.length).map(_.toDouble)
     (key, value)
   }
 
   /** Parse first Ints as keys, then values */
-  def getWithKey(line: Array[Int]): (List[Int], Array[Double]) = {
-    val key = line.slice(0, nKeys).toList
-    val value = line.slice(nKeys, line.length).map(_.toDouble)
+  def getWithKey(line: Array[Int]): (Int, Array[Double]) = {
+    val key = line(0)
+    val value = line.slice(1, line.length).map(_.toDouble)
     (key, value)
   }
 
   /** Parse first Bytes as keys, then values */
-  def getWithKey(line: Array[Byte]): (List[Int], Array[Double]) = {
+  def getWithKey(line: Array[Byte]): (Int, Array[Double]) = {
     val parts = convertBytes(line)
-    val key = parts.slice(0, nKeys).map(_.toInt).toList
-    val value = parts.slice(nKeys, line.length)
+    val key = parts(0).toInt
+    val value = parts.slice(1, line.length)
     (key, value)
   }
 

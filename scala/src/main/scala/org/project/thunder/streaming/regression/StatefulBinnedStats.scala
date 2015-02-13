@@ -14,14 +14,14 @@ import org.project.thunder.streaming.util.counters.{StatCounterMixed, StatUpdate
  * Stateful binned statistics
  */
 class StatefulBinnedStats (
-    var featureKey: List[Int],
+    var featureKey: Int,
     var nfeatures: Int)
   extends Serializable with Logging {
 
-  def this() = this(Array(0), 1)
+  def this() = this(0, 1)
 
   /** Set which indices that correspond to features. */
-  def setFeatureKey(featureKey: List[Int]): StatefulBinnedStats = {
+  def setFeatureKey(featureKey: Int): StatefulBinnedStats = {
     this.featureKey = featureKey
     this
   }
@@ -32,7 +32,7 @@ class StatefulBinnedStats (
     this
   }
 
-  def run(data: StreamingSeries): DStream[(List[Int], StatCounterMixed)] = {
+  def run(data: StreamingSeries): DStream[(Int, StatCounterMixed)] = {
 
     var features = Array[Double]()
 
@@ -71,7 +71,7 @@ object StatefulBinnedStats {
    */
   def fit(
     input: StreamingSeries,
-    featureKey: List[Int],
+    featureKey: Int,
     featureCount: Int,
     featureValues: Array[Double]): StreamingSeries =
   {
