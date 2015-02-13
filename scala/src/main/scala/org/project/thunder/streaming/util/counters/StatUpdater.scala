@@ -13,10 +13,10 @@ object StatUpdater {
 
   /** Update a combination of stat counter and stat counter array */
   def mixed = (
-    input: Seq[Array[Double]],
-    state: Option[StatCounterMixed],
-    features: Array[Double],
-    nfeatures: Int) => {
+      input: Seq[Array[Double]],
+      state: Option[StatCounterMixed],
+      features: Array[Double],
+      nfeatures: Int) => {
 
     val updatedState = state.getOrElse(StatCounterMixed(new StatCounter(), new StatCounterArray(nfeatures)))
 
@@ -48,6 +48,7 @@ object StatUpdater {
       updatedState.counterArray.merge(binnedData)
 
     }
+
     Some(updatedState)
   }
 
