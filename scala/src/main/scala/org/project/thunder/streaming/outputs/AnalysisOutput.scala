@@ -24,12 +24,13 @@ object AnalysisOutput {
 
   class BadOutputConfigException(msg: String) extends RuntimeException(msg)
 
-  def fromXMLNode(nodes: NodeSeq): Try[AnalysisOutput[StreamingData]] = {
+  /** Extracts one or more AnalysisOutputs from the XML subtree under an <analysis> element */
+  def fromXMLNode(nodes: NodeSeq): List[Try[AnalysisOutput[Array[_]]]] = {
     // Try to find a class with the given type name
-    def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: AnalysisOutput[StreamingData]]] = {
+    def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: AnalysisOutput[Array[_]]]] = {
       nodes \ "name" match {
         case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text)
-          .asSubclass(classOf[AnalysisOutput[StreamingData]]))
+          .asSubclass(classOf[AnalysisOutput[Array[_]]]))
         case _ => Failure(new BadOutputConfigException("Name not correctly specified in XML configuration file."))
       }
     }
@@ -41,25 +42,29 @@ object AnalysisOutput {
     }
     // Attempt to invoke the (maybe) AnalysisOutput class' constructor with paramMap as an argument
     // Not using for..yield because I want Failures to propagate out of this method
-    extractAndFindClass(nodes) match {
-      case Success(clazz) => {
-        extractParameters(nodes) match {
-          case Success(parameters) => Try(instantiateAnalysisOutput(clazz)(parameters))
-          case Failure(f) => Failure(f)
+    val maybeOutputs = (nodes \ "output") map { node =>
+      extractAndFindClass(node) match {
+        case Success(clazz) => {
+          extractParameters(node) match {
+            case Success(parameters) => Try(instantiateAnalysisOutput(clazz)(parameters))
+            case Failure(f) => Failure(f)
+          }
         }
+        case Failure(f) => Failure(f)
       }
-      case Failure(f) => Failure(f)
     }
+    // Convert it to a List for ease of use
+    maybeOutputs.toList
   }
 
-  def instantiateAnalysisOutput[T <: AnalysisOutput[StreamingData]](clazz: java.lang.Class[T])(args:AnyRef*): T = {
+  def instantiateAnalysisOutput[T <: AnalysisOutput[Array[_]]](clazz: java.lang.Class[T])(args:AnyRef*): T = {
     val constructor = clazz.getConstructors()(0)
     return constructor.newInstance(args:_*).asInstanceOf[T]
   }
 }
 
-abstract class AnalysisOutput {
-  def handleResult(data: StreamingData): Unit
+abstract class AnalysisOutput[T <: Array[_]] {
+  def handleResult(data: T, params: Map[String, String]): Unit
 }
 
 /*

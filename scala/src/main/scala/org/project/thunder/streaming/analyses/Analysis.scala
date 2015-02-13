@@ -62,6 +62,6 @@ object Analysis {
 
 trait Analysis[T <: StreamingData] {
   // TODO: There doesn't seem to be much else we can do as far as better type-checking is concerned
-  def run(output: AnalysisOutput[_ <: StreamingData]): Unit;
+  def run(outputs: List[Try[AnalysisOutput[_ <: StreamingData]]]): Unit
 }
 

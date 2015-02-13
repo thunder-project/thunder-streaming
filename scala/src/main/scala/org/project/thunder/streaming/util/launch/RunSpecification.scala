@@ -12,7 +12,7 @@ import scala.xml.{NodeSeq, Node}
  */
 class RunSpecification(path: String) {
 
-  type AnalysesList = List[(Try[Analysis[_ <: StreamingData]], Try[AnalysisOutput[_ <: StreamingData]])]
+  type AnalysesList = List[(Try[Analysis[_ <: StreamingData]], Seq[Try[AnalysisOutput[_ <: Array[_]]]])]
   val analyses: AnalysesList = getAnalysesFromXML(scala.xml.XML.loadFile(path))
 
   def getAnalysesFromXML(nodes: NodeSeq): AnalysesList = {
@@ -24,7 +24,10 @@ class RunSpecification(path: String) {
   def runAnalyses() : Unit = {
     analyses.foreach {
       analysisPair => analysisPair match {
-        case (Success(analysis), Success(output)) => analysis.run(output)
+        case (Success(analysis), maybeOutputs) => {
+          // We will lazily wait until the analysis is executed before throwing any exceptions
+          analysis.run(maybeOutputs)
+        }
         // For now, just print the thrown exceptions if there were errors
         // Also, is there a better way of dealing with Pairs?
         case (Failure(f1), Failure(f2)) => {
