@@ -4,7 +4,8 @@ import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.util.StatCounter
 import org.apache.spark.streaming.StreamingContext._
 
-class StreamingSeries(dstream: DStream[(List[Int], Array[Double])]) {
+class StreamingSeries(dstream: DStream[(List[Int], Array[Double])])
+  extends StreamingData[List[Int], Array[Double], StreamingSeries](dstream) {
 
   /** State updating function that updates statistics for each key. */
   val runningStats = (values: Seq[Array[Double]], state: Option[StatCounter]) => {
@@ -22,11 +23,9 @@ class StreamingSeries(dstream: DStream[(List[Int], Array[Double])]) {
   def seriesMean(): StreamingSeries = {
     val stats = dstream.updateStateByKey{runningStats}
     val output = stats.mapValues(x => Array(x.mean))
-    new StreamingSeries(output)
+    new StreamingSeries(output).applyValues(x => x)
   }
 
-  def print() {
-    dstream.map{ case (k, v) => "(" + k.mkString(",") + "), " + "(" + v.mkString(",") + ")"}.print()
-  }
+  def makeNew(dstream: DStream[(List[Int], Array[Double])]) = new StreamingSeries(dstream)
 
 }
