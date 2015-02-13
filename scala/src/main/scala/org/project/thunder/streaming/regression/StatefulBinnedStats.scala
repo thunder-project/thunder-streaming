@@ -2,38 +2,15 @@
 package org.project.thunder.streaming.regression
 
 import org.apache.spark.Logging
-import org.apache.spark.util.StatCounter
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.dstream.DStream
 
-import org.project.thunder.streaming.util.{StatCounterArray, LoadParam}
+import org.project.thunder.streaming.util.LoadParam
+import org.project.thunder.streaming.util.counters.{StatCounterMixed, StatUpdater}
 import org.project.thunder.streaming.util.io.Keys
-
-
-/**
- * Class for keeping track of a (StatCounter, StatCounterArray) pair, and computing
- * summary statistics derived from them. Typically, the StatCounter will compute
- * a global running statistic, and the StatCounterArray will compute running
- * statistics within each of several bins.
- *
- */
-case class BinnedStats (var counterTotal: StatCounter, var counterBins: StatCounterArray) {
-
-  def r2: Double = {
-    1 - counterBins.combinedVariance / counterTotal.variance
-  }
-
-  def weightedMean(featureValues: Array[Double]): Double = {
-    val means = counterBins.mean
-    val pos = means.map(x => (x - counterTotal.mean) / counterTotal.mean).map{x => if (x < 0) 0 else x}
-    val weights = pos.map(x => x / pos.sum)
-    weights.zip(featureValues).map{case (x,y) => x * y}.sum
-  }
-
-}
 
 
 /**
@@ -41,7 +18,7 @@ case class BinnedStats (var counterTotal: StatCounter, var counterBins: StatCoun
  */
 class StatefulBinnedStats (
   var featureKeys: Array[Int],
-  var nFeatures: Int)
+  var nfeatures: Int)
   extends Serializable with Logging
 {
 
@@ -54,50 +31,12 @@ class StatefulBinnedStats (
   }
 
   /** Set the values associated with the to features. */
-  def setFeatureCount(nFeatures: Int): StatefulBinnedStats = {
-    this.nFeatures = nFeatures
+  def setFeatureCount(nfeatures: Int): StatefulBinnedStats = {
+    this.nfeatures = nfeatures
     this
   }
 
-  /** State updating function that updates the statistics for each key and bin. */
-  val runningBinnedStats = (input: Seq[Array[Double]],
-                            state: Option[BinnedStats],
-                            features: Array[Double]) => {
-
-    val updatedState = state.getOrElse(BinnedStats(new StatCounter(), new StatCounterArray(nFeatures)))
-
-    val values = input.foldLeft(Array[Double]()) { (acc, i) => acc ++ i}
-    val currentCount = values.size
-    val n = features.size
-
-    if ((currentCount != 0) && (n != 0)) {
-
-      // group new data by the features
-      val pairs = features.zip(values)
-      val grouped = pairs.groupBy{case (k,v) => k}
-
-      // get data from each bin, ignoring the 0 bin
-      val binnedData = Range(1,nFeatures+1).map{ ind => if (grouped.contains(ind)) {
-        grouped(ind).map{ case (k,v) => v}
-        } else {
-          Array[Double]()
-        }
-      }.toArray
-
-      // get all data, ignoring the 0 bin
-      val all = pairs.filter{case (k,v) => k != 0}.map{case (k,v) => v}
-
-      // update the combined stat counter
-      updatedState.counterTotal.merge(all)
-
-      // update the binned stat counter array
-      updatedState.counterBins.merge(binnedData)
-
-    }
-    Some(updatedState)
-  }
-
-  def runStreaming(data: DStream[(Int, Array[Double])]): DStream[(Int, BinnedStats)] = {
+  def runStreaming(data: DStream[(Int, Array[Double])]): DStream[(Int, StatCounterMixed)] = {
 
     var features = Array[Double]()
 
@@ -113,7 +52,7 @@ class StatefulBinnedStats (
 
     // update the stats for each key
     data.filter{case (k, _) => !featureKeys.contains(k)}.updateStateByKey{
-      (x, y) => runningBinnedStats(x, y, features)
+      (x, y) => StatUpdater.mixed(x, y, features, nfeatures)
     }
 
   }
@@ -139,7 +78,7 @@ object StatefulBinnedStats {
    */
   def trainStreaming(input: DStream[(Int, Array[Double])],
                      featureKeys: Array[Int],
-                     featureCount: Int): DStream[(Int, BinnedStats)] =
+                     featureCount: Int): DStream[(Int, StatCounterMixed)] =
   {
     new StatefulBinnedStats().setFeatureKeys(featureKeys).setFeatureCount(featureCount).runStreaming(input)
   }

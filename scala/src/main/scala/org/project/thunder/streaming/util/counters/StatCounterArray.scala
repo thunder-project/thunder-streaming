@@ -1,4 +1,4 @@
-package org.project.thunder.streaming.util
+package org.project.thunder.streaming.util.counters
 
 import org.apache.spark.util.StatCounter
 
@@ -91,4 +91,6 @@ object StatCounterArray {
   /** Build a StatCounter from a flat Array. */
   def apply(values: Array[Double]) = new StatCounterArray(values.map(x => Array(x).toTraversable), values.length)
 
+
 }
+
