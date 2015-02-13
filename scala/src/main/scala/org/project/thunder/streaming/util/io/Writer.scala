@@ -18,23 +18,19 @@ abstract class Writer {
 
   def write(rdd: RDD[Double], fullFile: String)
 
-  def withoutKeys(data: RDD[Array[Double]], directory: String, fileName: Seq[String]) {
-    val n = data.first().size
-    for (i <- 0 until n) {
-      write(data.map(x => x(i)), directory ++ File.separator ++ fileName(i))
+  def withoutKeys(data: DStream[(Array[Double])], directory: String, fileName: Seq[String]) {
+    data.foreachRDD{rdd =>
+      if (rdd.count() > 0) {
+        val n = rdd.first().size
+        val dateString = Calendar.getInstance().getTime.toString.replace(" ", "-").replace(":", "-")
+        for (i <- 0 until n) {
+          write(rdd.map(x => x(i)), directory ++ File.separator ++ fileName(i) ++ "-" ++ dateString)
+        }
+      }
     }
   }
 
-  def withKeys(data: RDD[(Array[Int], Array[Double])], directory: String, fileName: Seq[String]) {
-    val dims = Keys.getDims(data)
-    val sorted = Keys.subToInd(data, dims).sortByKey().values
-    val n = sorted.first().size
-    for (i <- 0 until n) {
-      write(sorted.map(x => x(i)), directory ++ File.separator ++ fileName(i))
-    }
-  }
-
-  def withKeys(data: DStream[(Int, Array[Double])], directory: String, fileName: Seq[String]) {
+  def withKeys(data: DStream[(List[Int], Array[Double])], directory: String, fileName: Seq[String]) {
     data.foreachRDD{rdd =>
       if (rdd.count() > 0) {
         val sorted = rdd.sortByKey().values
