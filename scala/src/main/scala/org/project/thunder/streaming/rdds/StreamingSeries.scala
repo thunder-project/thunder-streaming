@@ -33,11 +33,11 @@ class StreamingSeries(val dstream: DStream[(List[Int], Array[Double])])
     new TextWriter().withKeys(dstream, directory, fileName)
   }
 
-  /** Print data (useful for debugging) */
-  def print(): Unit = {
+  /** Print keys and values */
+  override def print(): Unit = {
     dstream.map{case (k, v) => "(" + k.mkString(",") + ") " + " (" + v.mkString(",") + ")"}.print()
   }
 
-  def create(dstream: DStream[(List[Int], Array[Double])]) = new StreamingSeries(dstream)
+  override def create(dstream: DStream[(List[Int], Array[Double])]) = new StreamingSeries(dstream)
 
 }
