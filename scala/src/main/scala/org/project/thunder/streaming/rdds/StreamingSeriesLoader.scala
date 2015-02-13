@@ -9,16 +9,16 @@ import org.project.thunder.streaming.util.io.hadoop.FixedLengthBinaryInputFormat
 class StreamingSeriesLoader(ssc: StreamingContext) {
 
   /** Load streaming series data from text */
-  def fromText(dir: String, nKeys: Int): StreamingSeries = {
-    val parser = new Parser(nKeys)
+  def fromText(dir: String): StreamingSeries = {
+    val parser = new Parser()
     val lines =ssc.textFileStream(dir)
     val dstream = lines.map(parser.getWithKey)
     new StreamingSeries(dstream)
    }
 
   /** Load streaming series data from binary */
-  def fromBinary(dir: String, nKeys: Int, valueType: String): StreamingSeries = {
-    val parser = new Parser(nKeys, valueType)
+  def fromBinary(dir: String, valueType: String): StreamingSeries = {
+    val parser = new Parser(valueType)
     val lines = ssc.fileStream[LongWritable, BytesWritable, FixedLengthBinaryInputFormat](dir)
     val dstream = lines.map{ case (k, v) => v.getBytes}.map(parser.getWithKey)
     new StreamingSeries(dstream)
