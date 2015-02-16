@@ -1,7 +1,8 @@
 package org.project.thunder.streaming.analyses
 
+import org.project.thunder.streaming.analyses.Analysis.OutputListType
 import org.project.thunder.streaming.outputs.AnalysisOutput
-import org.project.thunder.streaming.rdds.StreamingData
+import org.project.thunder.streaming.util.ThunderStreamingContext
 
 import scala.util.{Failure, Success, Try}
 import scala.xml.NodeSeq
@@ -23,15 +24,23 @@ object Analysis {
     </analysis>;
    */
 
+  type OutputListType = List[Try[AnalysisOutput[_ <: List[_]]]]
+
   class BadAnalysisConfigException(msg: String) extends RuntimeException(msg)
 
-  def fromXMLNode(nodes: NodeSeq): Try[Analysis[StreamingData]] = {
+  def instantiateFromConf(tssc: ThunderStreamingContext, nodes: NodeSeq): Try[Analysis[_, _]] = {
     // Try to find a class with the given type name
-    def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: Analysis[StreamingData]]] = {
-      nodes \ "name" match {
-        case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text)
-          .asSubclass(classOf[Analysis[StreamingData]]))
-        case _ => Failure(new BadAnalysisConfigException("Name not correctly specified in XML configuration file."))
+    def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: Analysis[_, _]]] = {
+      val nameNodes = nodes \ "name"
+      println("nameNodes: %s".format(nameNodes))
+      if (nameNodes.length != 1) {
+        Failure(new BadAnalysisConfigException("The Analysis name was not correctly specified in a single <name> element"))
+      } else {
+        nameNodes(0) match {
+          case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text)
+            .asSubclass(classOf[Analysis[_, _]]))
+          case _ => Failure(new BadAnalysisConfigException("The Analysis name was not correctly specified"))
+        }
       }
     }
     // Extract all parameters necessary to instantiate an instance of the above output type
@@ -45,7 +54,7 @@ object Analysis {
     extractAndFindClass(nodes) match {
       case Success(clazz) => {
         extractParameters(nodes) match {
-          case Success(parameters) => Try(instantiateAnalysis(clazz)(parameters))
+          case Success(parameters) => Try(instantiateAnalysis(clazz)(tssc, parameters))
           case Failure(f) => Failure(f)
         }
       }
@@ -54,14 +63,30 @@ object Analysis {
   }
 
   // Code modified from http://stackoverflow.com/questions/1641104/instantiate-object-with-reflection-using-constructor-arguments
-  def instantiateAnalysis[T <: Analysis[StreamingData]](clazz: java.lang.Class[T])(args:AnyRef*): T = {
+  def instantiateAnalysis[T <: Analysis[_, _]](clazz: java.lang.Class[T])(args:AnyRef*): T = {
     val constructor = clazz.getConstructors()(0)
-    return constructor.newInstance(args:_*).asInstanceOf[T]
+    constructor.newInstance(args:_*).asInstanceOf[T]
   }
 }
 
-trait Analysis[T <: StreamingData] {
+trait Analysis[K, V] {
   // TODO: There doesn't seem to be much else we can do as far as better type-checking is concerned
-  def run(outputs: List[Try[AnalysisOutput[_ <: StreamingData]]]): Unit
+
+ def register(outputs: OutputListType): Unit
+
+ def getOutputFunctions(outputs: OutputListType): List[(List[(K, V)] => Unit)] = {
+   // Generate an error message for all AnalysisOutputs that could not be generated, and
+   // then filter the output list so only AnalysisOutput objects remain
+   val maybeOutputFuncs = outputs.map(maybeOutput => maybeOutput match {
+     case Success(output) => Some(output.handleResult(_))
+     case Failure(f) => {
+       // Here is where exceptions should be handled
+       println(f.toString)
+       None
+     }
+   })
+   val filteredFuncs = maybeOutputFuncs.flatMap(_.asInstanceOf[Option[_]])
+   filteredFuncs.map(_.asInstanceOf[(List[(K, V)] => Unit)])
+ }
 }
 

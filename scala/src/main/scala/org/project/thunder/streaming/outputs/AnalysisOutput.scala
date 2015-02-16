@@ -10,6 +10,7 @@ import scala.xml.NodeSeq
  */
 object AnalysisOutput {
   /*
+
   An AnalysisOutput is specified with the following schema. Each <output> tag must only have one <type> tag, and
   may have zero or more <param> tags.
 
@@ -25,13 +26,19 @@ object AnalysisOutput {
   class BadOutputConfigException(msg: String) extends RuntimeException(msg)
 
   /** Extracts one or more AnalysisOutputs from the XML subtree under an <analysis> element */
-  def fromXMLNode(nodes: NodeSeq): List[Try[AnalysisOutput[Array[_]]]] = {
+  def instantiateFromConf(nodes: NodeSeq): List[Try[AnalysisOutput[List[_]]]] = {
     // Try to find a class with the given type name
-    def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: AnalysisOutput[Array[_]]]] = {
-      nodes \ "name" match {
-        case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text)
-          .asSubclass(classOf[AnalysisOutput[Array[_]]]))
-        case _ => Failure(new BadOutputConfigException("Name not correctly specified in XML configuration file."))
+    def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: AnalysisOutput[List[_]]]] = {
+      val nameNodes = nodes \ "name"
+      println("nameNodes: %s".format(nameNodes))
+      if (nameNodes.length != 1) {
+        Failure(new BadOutputConfigException("The AnalysisOutput name was not correctly specified in a single <name> element"))
+      } else {
+        nameNodes(0) match {
+          case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text)
+            .asSubclass(classOf[AnalysisOutput[List[_]]]))
+          case _ => Failure(new BadOutputConfigException("The AnalysisOutput name was not correctly specified"))
+        }
       }
     }
     // Extract all parameters necessary to instantiate an instance of the above output type
@@ -57,14 +64,14 @@ object AnalysisOutput {
     maybeOutputs.toList
   }
 
-  def instantiateAnalysisOutput[T <: AnalysisOutput[Array[_]]](clazz: java.lang.Class[T])(args:AnyRef*): T = {
+  def instantiateAnalysisOutput[T <: AnalysisOutput[List[_]]](clazz: java.lang.Class[T])(args:AnyRef*): T = {
     val constructor = clazz.getConstructors()(0)
     return constructor.newInstance(args:_*).asInstanceOf[T]
   }
 }
 
-abstract class AnalysisOutput[T <: Array[_]] {
-  def handleResult(data: T, params: Map[String, String]): Unit
+abstract class AnalysisOutput[T <: List[_]] extends Serializable {
+  def handleResult(data: T): Unit
 }
 
 /*
