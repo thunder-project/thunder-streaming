@@ -17,12 +17,9 @@ class SimpleExampleAnalysis(tssc: ThunderStreamingContext, params: Map[String, S
 
     val dataPath = params.getOrElse(SimpleExampleAnalysis.DATA_PATH_KEY, "series_data")
 
-    println("dataPath: %s".format(dataPath))
-
     val data = tssc.loadStreamingSeries(dataPath, inputFormat = "text")
 
     val means = data.seriesMean()
-    means.print()
 
     val outputFunctions = super.getOutputFunctions(outputs)
 
