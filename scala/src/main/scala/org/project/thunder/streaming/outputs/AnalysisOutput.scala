@@ -1,5 +1,6 @@
 package org.project.thunder.streaming.outputs
 
+import org.apache.spark.streaming.Time
 import org.project.thunder.streaming.rdds.StreamingData
 
 import scala.util.{Failure, Success, Try}
@@ -16,7 +17,7 @@ import scala.xml.NodeSeq
  * @tparam T the type of Analysis result (a List of (K, List[V]) objects) that this output can handle.
  */
 abstract class AnalysisOutput[T <: List[_]](val params: Map[String, String]) extends Serializable {
-  def handleResult(data: T): Unit
+  def handleResult(data: T, time: Time): Unit
 }
 
 object AnalysisOutput {

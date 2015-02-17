@@ -10,6 +10,7 @@ import org.project.thunder.streaming.util.io.{BinaryWriter, TextWriter}
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   extends StreamingData[Int, Array[Double], StreamingSeries] {
 
+
   /** Compute a running estate of several statistics */
   def seriesStat(): StreamingSeries = {
     val stats = dstream.updateStateByKey{StatUpdater.counter}
@@ -41,4 +42,8 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
 
   override def create(dstream: DStream[(Int, Array[Double])]) = new StreamingSeries(dstream)
 
+}
+
+object StreamingSeries {
+  type SeriesDataType = List[(Int, Array[Double])]
 }

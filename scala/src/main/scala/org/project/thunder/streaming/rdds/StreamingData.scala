@@ -1,6 +1,7 @@
 package org.project.thunder.streaming.rdds
 
 
+import org.apache.spark.streaming.Time
 import org.apache.spark.streaming.dstream.DStream
 
 trait StreamingData[K, V, +Self <: StreamingData[K, V, Self]] {
@@ -26,18 +27,18 @@ trait StreamingData[K, V, +Self <: StreamingData[K, V, Self]] {
   }
 
   /** Output the values by collecting and passing to one or more functions */
-  def output(func: List[List[V] => Unit]): Unit = {
-    dstream.foreachRDD { rdd =>
+  def output(func: List[(List[V], Time) => Unit]): Unit = {
+    dstream.foreachRDD { (rdd, time) =>
       val out = rdd.collect().map{case (k, v) => v}.toList
-      func.foreach(f => f(out))
+      func.foreach(f => f(out, time))
     }
   }
 
   /** Output the values and keys by collecting and passing to one or more functions */
-  def outputWithKeys(func: List[List[(K, V)] => Unit]): Unit = {
-    dstream.foreachRDD { rdd =>
+  def outputWithKeys(func: List[(List[(K, V)], Time) => Unit]): Unit = {
+    dstream.foreachRDD { (rdd, time) =>
       val out = rdd.collect().toList
-      func.foreach(f => f(out))
+      func.foreach(f => f(out, time))
     }
   }
 

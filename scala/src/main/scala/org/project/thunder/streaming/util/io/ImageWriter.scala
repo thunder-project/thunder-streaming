@@ -1,13 +1,11 @@
 package org.project.thunder.streaming.util.io
 
-import org.apache.spark.rdd.RDD
-
-/*** Class for writing an RDD to an image */
+/*** Class for writing an StreamingImages object to image files */
 
 class ImageWriter extends Writer {
 
-  def write(rdd: RDD[Double], fullFile: String) = {
-    throw new NotImplementedError("image writing not yet implemented")
-  }
+  // TODO: Currently no image support
+
+  override def write(data: List[(Nothing, Nothing)], fullFile: String): Unit = ???
 
 }
