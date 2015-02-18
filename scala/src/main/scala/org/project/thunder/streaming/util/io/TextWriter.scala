@@ -1,7 +1,6 @@
 package org.project.thunder.streaming.util.io
 
-import org.apache.spark.rdd.RDD
-import java.io.{PrintWriter, BufferedWriter, FileWriter, File}
+import java.io.{BufferedWriter, FileWriter, File}
 
 /*** Class for writing an RDD to a text file */
 
