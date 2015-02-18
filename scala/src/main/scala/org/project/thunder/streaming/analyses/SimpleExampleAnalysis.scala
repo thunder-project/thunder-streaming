@@ -3,7 +3,7 @@ package org.project.thunder.streaming.analyses
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.project.thunder.streaming.analyses.Analysis.OutputListType
-import org.project.thunder.streaming.outputs.AnalysisOutput
+import org.project.thunder.streaming.outputs.Output$
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
 import scala.util.{Failure, Success, Try}

@@ -1,7 +1,7 @@
 package org.project.thunder.streaming.util.launch
 
 import org.project.thunder.streaming.analyses.Analysis
-import org.project.thunder.streaming.outputs.AnalysisOutput
+import org.project.thunder.streaming.outputs.{Output, Output$}
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
 import scala.util.{Failure, Success, Try}
@@ -12,7 +12,7 @@ import scala.xml.{NodeSeq}
  */
 class AnalysisManager(tssc: ThunderStreamingContext, path: String) {
 
-  type AnalysesList = List[(Try[Analysis[_, _]], List[Try[AnalysisOutput[_ <: List[_]]]])]
+  type AnalysesList = List[(Try[Analysis[_, _]], List[Try[Output[_ <: List[_]]]])]
 
   val analyses: AnalysesList = load(tssc, path)
 
@@ -23,7 +23,7 @@ class AnalysisManager(tssc: ThunderStreamingContext, path: String) {
     // the list of analyses
     (root \\ "analysis").foldLeft(List().asInstanceOf[AnalysesList]) {
       (analysisList, node) => {
-        Pair(Analysis.instantiateFromConf(tssc, node), AnalysisOutput.instantiateFromConf(node)) :: analysisList
+        Pair(Analysis.instantiateFromConf(tssc, node), Output.instantiateFromConf(node)) :: analysisList
       }
     }
   }

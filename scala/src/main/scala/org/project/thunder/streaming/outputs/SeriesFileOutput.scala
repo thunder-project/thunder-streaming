@@ -6,7 +6,7 @@ import org.project.thunder.streaming.util.io.{SeriesWriter, TextWriter, BinaryWr
 /**
  *
  */
-class SeriesFileOutput(override val params: Map[String, String]) extends AnalysisOutput[List[(Int, Array[Double])]](params) {
+class SeriesFileOutput(override val params: Map[String, String]) extends Output[List[(Int, Array[Double])]](params) {
 
   override def handleResult(data: List[(Int, Array[Double])], time: Time): Unit = {
     // Try to find a writer for the given parameters

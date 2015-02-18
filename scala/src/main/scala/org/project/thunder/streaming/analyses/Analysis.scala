@@ -2,7 +2,7 @@ package org.project.thunder.streaming.analyses
 
 import org.apache.spark.streaming.Time
 import org.project.thunder.streaming.analyses.Analysis.OutputListType
-import org.project.thunder.streaming.outputs.AnalysisOutput
+import org.project.thunder.streaming.outputs.{Output, Output$}
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
 import scala.util.{Failure, Success, Try}
@@ -25,7 +25,7 @@ object Analysis {
     </analysis>;
    */
 
-  type OutputListType = List[Try[AnalysisOutput[_ <: List[_]]]]
+  type OutputListType = List[Try[Output[_ <: List[_]]]]
 
   class BadAnalysisConfigException(msg: String) extends RuntimeException(msg)
 

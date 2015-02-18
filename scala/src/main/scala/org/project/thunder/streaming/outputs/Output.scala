@@ -16,11 +16,11 @@ import scala.xml.NodeSeq
  *
  * @tparam T the type of Analysis result (a List of (K, List[V]) objects) that this output can handle.
  */
-abstract class AnalysisOutput[T <: List[_]](val params: Map[String, String]) extends Serializable {
+abstract class Output[T <: List[_]](val params: Map[String, String]) extends Serializable {
   def handleResult(data: T, time: Time): Unit
 }
 
-object AnalysisOutput {
+object Output {
   /*
 
   An AnalysisOutput is specified with the following schema. Each <output> tag must only have one <type> tag, and
@@ -38,9 +38,9 @@ object AnalysisOutput {
   class BadOutputConfigException(msg: String) extends RuntimeException(msg)
 
   /** Extracts one or more AnalysisOutputs from the XML subtree under an <analysis> element */
-  def instantiateFromConf(nodes: NodeSeq): List[Try[AnalysisOutput[List[_]]]] = {
+  def instantiateFromConf(nodes: NodeSeq): List[Try[Output[List[_]]]] = {
     // Try to find a class with the given type name
-    def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: AnalysisOutput[List[_]]]] = {
+    def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: Output[List[_]]]] = {
       val nameNodes = nodes \ "name"
       println("nameNodes: %s".format(nameNodes))
       if (nameNodes.length != 1) {
@@ -48,7 +48,7 @@ object AnalysisOutput {
       } else {
         nameNodes(0) match {
           case <name>{ name @ _* }</name> => Success(Class.forName(name(0).text)
-            .asSubclass(classOf[AnalysisOutput[List[_]]]))
+            .asSubclass(classOf[Output[List[_]]]))
           case _ => Failure(new BadOutputConfigException("The AnalysisOutput name was not correctly specified"))
         }
       }
@@ -83,7 +83,7 @@ object AnalysisOutput {
    * @tparam T
    * @return
    */
-  def instantiateAnalysisOutput[T <: AnalysisOutput[List[_]]](clazz: java.lang.Class[T])(args:AnyRef*): T = {
+  def instantiateAnalysisOutput[T <: Output[List[_]]](clazz: java.lang.Class[T])(args:AnyRef*): T = {
     val constructor = clazz.getConstructors()(0)
     return constructor.newInstance(args:_*).asInstanceOf[T]
   }
