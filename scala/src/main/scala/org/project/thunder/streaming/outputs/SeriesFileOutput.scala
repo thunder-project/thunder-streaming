@@ -1,30 +1,29 @@
 package org.project.thunder.streaming.outputs
 
 import org.apache.spark.streaming.Time
-import org.project.thunder.streaming.rdds.StreamingSeries.SeriesDataType
 import org.project.thunder.streaming.util.io.{SeriesWriter, TextWriter, BinaryWriter}
 
 /**
  *
  */
-class SeriesFileOutput(override val params: Map[String, String]) extends AnalysisOutput[SeriesDataType](params) {
+class SeriesFileOutput(override val params: Map[String, String]) extends AnalysisOutput[List[(Int, Array[Double])]](params) {
 
   override def handleResult(data: List[(Int, Array[Double])], time: Time): Unit = {
     // Try to find a writer for the given parameters
     val maybeMethods = for {
       maybeDir <- params.get(SeriesFileOutput.DIR_KEY)
-      maybeFile <- params.get(SeriesFileOutput.FILE_KEY)
+      maybePrefix <- params.get(SeriesFileOutput.PREFIX_KEY)
       maybeFormat <- params.get(SeriesFileOutput.FORMAT_KEY)
       maybeWriter <- SeriesFileOutput.formatToWriter.get(maybeFormat)
       maybeWithKeys <- params.get(SeriesFileOutput.INCLUDE_KEYS_KEY)
       maybeWriterMethod <- SeriesFileOutput.methodForKeyParam(maybeWriter, maybeWithKeys)
-    } yield maybeWriterMethod(data, time, maybeDir, maybeFile)
+    } yield maybeWriterMethod(data, time, maybeDir, maybePrefix)
   }
 }
 
 object SeriesFileOutput {
   final val DIR_KEY = "directory"
-  final val FILE_KEY = "file"
+  final val PREFIX_KEY = "prefix"
   final val FORMAT_KEY = "format"
   final val INCLUDE_KEYS_KEY = "include_keys"
 
@@ -34,7 +33,7 @@ object SeriesFileOutput {
     ("binary", new BinaryWriter())
   )
 
-  type WriterMethodType = (SeriesDataType, Time, String, String) => Unit
+  type WriterMethodType = (List[(Int, Array[Double])], Time, String, String) => Unit
 
   // Get the writer method based on the keys parameter
   def methodForKeyParam(writer: SeriesWriter, keyParam: String): Option[WriterMethodType] = {

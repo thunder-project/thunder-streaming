@@ -1,5 +1,6 @@
 package org.project.thunder.streaming.analyses
 
+import org.apache.spark.streaming.Time
 import org.project.thunder.streaming.analyses.Analysis.OutputListType
 import org.project.thunder.streaming.outputs.AnalysisOutput
 import org.project.thunder.streaming.util.ThunderStreamingContext
@@ -74,11 +75,11 @@ trait Analysis[K, V] {
 
  def register(outputs: OutputListType): Unit
 
- def getOutputFunctions(outputs: OutputListType): List[(List[(K, V)] => Unit)] = {
+ def getOutputFunctions(outputs: OutputListType): List[((List[(K, V)], Time)=> Unit)] = {
    // Generate an error message for all AnalysisOutputs that could not be generated, and
    // then filter the output list so only AnalysisOutput objects remain
    val maybeOutputFuncs = outputs.map(maybeOutput => maybeOutput match {
-     case Success(output) => Some(output.handleResult(_))
+     case Success(output) => Some(output.handleResult(_, _))
      case Failure(f) => {
        // Here is where exceptions should be handled
        println(f.toString)
@@ -86,7 +87,7 @@ trait Analysis[K, V] {
      }
    })
    val filteredFuncs = maybeOutputFuncs.flatMap(_.asInstanceOf[Option[_]])
-   filteredFuncs.map(_.asInstanceOf[(List[(K, V)] => Unit)])
+   filteredFuncs.map(_.asInstanceOf[((List[(K, V)], Time) => Unit)])
  }
 }
 

@@ -5,7 +5,7 @@ import org.apache.spark.streaming.StreamingContext._
 
 
 import org.project.thunder.streaming.util.counters.StatUpdater
-import org.project.thunder.streaming.util.io.{BinaryWriter, TextWriter}
+import org.project.thunder.streaming.util.io.{SeriesWriter, BinaryWriter, TextWriter}
 
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   extends StreamingData[Int, Array[Double], StreamingSeries] {
@@ -25,14 +25,21 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
     create(output)
   }
 
+  private def save(writer: SeriesWriter, directory: String, prefix: String): Unit = {
+    dstream.foreachRDD((rdd, time) => {
+      val data = rdd.collect()
+      writer.withKeys(data.toList, time, directory, prefix)
+    })
+  }
+
   /** Save data from each batch as binary files */
-  def saveAsBinary(directory: String, fileName: Seq[String]) = {
-    new BinaryWriter().withKeys(dstream, directory, fileName)
+  def saveAsBinary(directory: String, prefix: String) = {
+    save(new BinaryWriter(), directory, prefix)
   }
 
   /** Save data from each batch as text files */
-  def saveAsText(directory: String, fileName: Seq[String]) = {
-    new TextWriter().withKeys(dstream, directory, fileName)
+  def saveAsText(directory: String, prefix: String) = {
+    save(new TextWriter(), directory, prefix)
   }
 
   /** Print keys and values */
@@ -42,8 +49,4 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
 
   override def create(dstream: DStream[(Int, Array[Double])]) = new StreamingSeries(dstream)
 
-}
-
-object StreamingSeries {
-  type SeriesDataType = List[(Int, Array[Double])]
 }
