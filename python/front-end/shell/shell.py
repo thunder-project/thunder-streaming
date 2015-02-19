@@ -88,7 +88,6 @@ class ThunderStreamingContext(object):
             return stripped_name.split("/")
         for name in jar_file.namelist():
             if analysis_regex.match(name):
-                print "Found analysis: %s" % name
                 fixed_name = fix_name(name)
                 setattr(Analysis, fixed_name[-1], Analysis.make_method('.'.join(fixed_name)))
             elif output_regex.match(name):
@@ -378,5 +377,6 @@ def configure_context():
 
 # The following should be executed if the script is imported as a module and also if it's launched standalone
 tsc = configure_context()
+print "\nAccess the global ThunderStreamingContext through the 'tsc' object"
 
 
