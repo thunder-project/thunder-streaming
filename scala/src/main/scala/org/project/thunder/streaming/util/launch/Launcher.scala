@@ -12,13 +12,15 @@ object Launcher {
   def main(args: Array[String]): Unit = {
 
     // TODO Better arg parsing (need to do more than just get the XML file name)
-    // Just assume that the first argument is the XML file path for now
 
-    val master = args(0)
+    // For now, the script takes NO arguments, and necessary parameters are passed in as environment variables
+    val master = System.getenv("MASTER")
 
-    val batchTime = args(1).toInt
+    val batchTime = System.getenv("BATCH_TIME").toInt
 
-    val filePath = args(2)
+    val filePath = System.getenv("CONFIG_FILE_PATH")
+
+    println("filePath: %s".format(filePath))
 
     val conf = new SparkConf().setMaster(master).setAppName("ExampleLoadStreaming")
 

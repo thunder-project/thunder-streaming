@@ -1,13 +1,20 @@
+#!/usr/bin/python
 
 import optparse as opt
-import xml.dom.minidom as xml
+import xml.etree.ElementTree as ET
 import zipfile
 import os
+import sys
 import re
+import signal
+import time
 from subprocess import Popen, call
+from tempfile import NamedTemporaryFile
 
 ROOT_SBT_FILE = "build.sbt"
 PROJECT_NAME = "thunder-streaming"
+SPARK_PATH = os.environ.get("SPARK_PATH")
+THUNDER_STREAMING_PATH = os.environ.get("THUNDER_STREAMING_PATH")
 
 class Analysis(object):
     """
@@ -19,14 +26,15 @@ class Analysis(object):
         self.param_dict = param_dict
 
     @staticmethod
-    def makeMethod(name):
+    def make_method(name):
         """
         Creates a method that takes a list of parameters and constructs an Analysis object with the correct name
         and parameters dictionary. These attributes will be used by the ThunderStreamingContext to build the XML file
         """
-        def createAnalysis(**params):
+        @staticmethod
+        def create_analysis(**params):
             return Analysis(name, params)
-        createAnalysis
+        return create_analysis
 
 
 class Output(object):
@@ -38,13 +46,14 @@ class Output(object):
         self.param_dict = param_dict
 
     @staticmethod
-    def makeMethod(name):
+    def make_method(name):
         """
-        (See the comment in Analysis.makeMethod)
+        (See the comment in Analysis.make_method)
         """
-        def createOutput(**params):
+        @staticmethod
+        def create_output( **params):
             return Output(name, params)
-        createOutput
+        return create_output
 
 class ThunderStreamingContext(object):
     """
@@ -59,9 +68,9 @@ class ThunderStreamingContext(object):
     >>> tsc.addAnalysis(kmeans, text_output, binary_output)
     """
 
-    STARTED = "running"
+    STARTED = "started"
     STOPPED = "stopped"
-    INITED = "inited"
+    READY = "ready"
 
     @staticmethod
     def fromJARFile(jar_name, jar_file):
@@ -81,65 +90,187 @@ class ThunderStreamingContext(object):
             if analysis_regex.match(name):
                 print "Found analysis: %s" % name
                 fixed_name = fix_name(name)
-                setattr(Analysis, fixed_name[-1], Analysis.makeMethod('.'.join(fixed_name)))
+                setattr(Analysis, fixed_name[-1], Analysis.make_method('.'.join(fixed_name)))
             elif output_regex.match(name):
                 print "Found output: %s" % name
                 fixed_name = fix_name(name)
-                setattr(Output, fixed_name[-1], Output.makeMethod('.'.join(fixed_name)))
-        ThunderStreamingContext(jar_name)
+                setattr(Output, fixed_name[-1], Output.make_method('.'.join(fixed_name)))
+        return ThunderStreamingContext(jar_name)
 
-    def __init__(self):
-        impl = xml.getDOMImplementation()
-        self.doc = impl.createDocument(None, "analyses", None)
-        self.state = ThunderStreamingContext.INITED
+    def __init__(self, jar_name):
+        self.jar_name = jar_name
 
-    def addAnalysis(self, analysis, *outputs):
+        # Attributes used in _reinitialize
+        self.child = None
+        self.doc = None
+        self.state = None
+        self.config_file = None
 
-        if self.state == ThunderStreamingContext.STARTED:
+        # Set some default run parameters (some must be specified by the user)
+        self.run_parameters = {
+            'MASTER': 'local[2]',
+            'BATCH_TIME': '10',
+            'CONFIG_FILE_PATH': None,
+            'CHECKPOINT': None,
+        }
+
+        def handler(signum, stack):
+            self._handle_int()
+
+        signal.signal(signal.SIGINT, handler)
+        signal.signal(signal.SIGTERM, handler)
+
+        self._reinitialize()
+
+    def _reinitialize(self):
+
+        # Clean up anything leftover from a previous analysis
+        self.state = self.STOPPED
+        if self.config_file:
+            self.config_file.close()
+        self.config_file = None
+        self.set_config_file_path(None)
+
+        # Reset necessary fields
+        self.doc = ET.ElementTree(ET.Element("analyses"))
+
+        self._update_env()
+
+        # The child process has not been created yet
+        self.child = None
+
+    def _update_env(self):
+        for (name, value) in self.run_parameters.items():
+            if value:
+                os.putenv(name, value)
+
+    def _get_info_string(self):
+        info = "\n"
+        info += "JAR Location: %s\n" % self.jar_name
+        info += "Spark Location: %s\n" % SPARK_PATH
+        info += "Thunder-Streaming Location: %s\n" % THUNDER_STREAMING_PATH
+        info += "Checkpointing Directory: %s\n" % self.run_parameters.get("CHECKPOINT", "")
+        info += "Master: %s\n" % self.run_parameters.get("MASTER", "")
+        info += "Batch Time: %s\n" % self.run_parameters.get("BATCH_TIME", "")
+        info += "Configuration Path: %s\n" % self.run_parameters.get("CONFIG_FILE_PATH", "")
+        return info
+
+    def set_master(self, master):
+        self.run_parameters['MASTER'] = master
+        self._update_env()
+
+    def set_batch_time(self, batch_time):
+        self.run_parameters['BATCH_TIME'] = batch_time
+        self._update_env()
+
+    def set_config_file_path(self, cf_path):
+        self.run_parameters['CONFIG_FILE_PATH'] = cf_path
+        self._update_env()
+
+    def set_checkpoint_dir(self, cp_dir):
+        self.run_parameters['CHECKPOINT'] = cp_dir
+        self._update_env()
+
+    def add_analysis(self, analysis, *outputs):
+
+        if self.state == self.STARTED:
             print "You cannot add analyses after the service has been started. Call ThunderStreamingContext.stop() first"
             return
 
-        def build_params(param_dict):
-            params = []
+        def build_params(parent, param_dict):
             for (name, value) in param_dict.items():
-                param_elem = self.doc.createElement("param")
-                param_elem.setAttribute("name", name)
-                param_elem.setAttribute("value", value)
-                params.append(param_elem)
+                param_elem = ET.SubElement(parent, "param")
+                param_elem.set("name", name)
+                param_elem.set("value", value)
 
-        def build_outputs():
-            outputs = []
+        def build_outputs(analysis):
             for output in outputs:
-                output_child = self.doc.createElement("output")
-                output_params = build_params(output.param_dict)
-                for param_elem in output_params:
-                    output_child.appendChild(param_elem)
-                outputs.append(output)
+                output_child = ET.SubElement(analysis, "output")
+                name_elem = ET.SubElement(output_child, "name")
+                name_elem.text = output.name
+                build_params(output_child, output.param_dict)
 
-        analysis_elem = self.doc.createElement("analysis")
-        analysis_params = build_params(analysis.param_dict)
-        outputs = build_outputs()
-        for param_elem in analysis_params:
-            analysis_elem.appendChild(param_elem)
-        for output_elem in outputs:
-            analysis_elem.appendChild(output_elem)
+        analysis_elem = ET.SubElement(self.doc.getroot(), "analysis")
+        name_elem = ET.SubElement(analysis_elem, "name")
+        name_elem.text = analysis.name
+        build_params(analysis_elem, analysis.param_dict)
+        build_outputs(analysis_elem)
 
-        self.doc.appendChild(analysis_elem)
+        # Write the configuration to a temporary file and record the name
+        temp = NamedTemporaryFile(delete=False)
+        self.config_file = temp
+        self.doc.write(temp)
+        temp.flush()
+        self.set_config_file_path(temp.name)
+
+        # Now the job is ready to run
+        self.state = self.READY
+
 
     def _kill_child(self):
         """
-        Self a SIGTERM signal to the child (Scala process)
+        Send a SIGTERM signal to the child (Scala process)
         """
+        print "\nWaiting up to 10s for the job to stop cleanly..."
+        self.child.terminate()
+        self.child.poll()
+        # Give the child up to 10 seconds to terminate, then force kill it
+        for i in xrange(10):
+            if self.child and not self.child.returncode:
+                time.sleep(1)
+                self.child.poll()
+            else:
+                print "Job stopped cleanly."
+                return
+        print "Job isn't stopping. Force killing..."
+        self.child.kill()
+
+    def _start_child(self):
+        """
+        Launch the Scala process with the XML file and additional analysis parameters as CLI arguments
+        """
+        full_jar = os.path.join(os.getcwd(), self.jar_name)
+        spark_path = os.path.join(SPARK_PATH, "bin", "spark-submit")
+        base_args = [spark_path, "--class", "org.project.thunder.streaming.util.launch.Launcher", full_jar]
+        self.child = Popen(base_args)
+
+    def _handle_int(self):
+        if self.state == self.STARTED:
+            self.stop()
 
     def start(self):
-        # Start the child process with the XML file, and additional analysis parameters, as CLI arguments
+        if self.state == self.STARTED:
+            print "Cannot restart a job once it's already been started. Call ThunderStreamingContext.stop() first."
+            return
+        if self.state != self.READY:
+            print "You need to set up the analyses with ThunderStreamingContext.addAnalysis before the job can be started."
+            return
+        for (name, value) in self.run_parameters.items():
+            if value is None:
+                print "Environment variable %s has not been defined (using one of the ThunderStreamingContext.set* methods)." \
+                      "It must be set before any analyses can be launched." % name
+                return
+        print "Starting the streaming analyses with run configuration:"
+        print self
         self._start_child()
-        self.state = ThunderStreamingContext.STARTED
+        self.state = self.STARTED
+        # Spin until a SIGTERM or a SIGINT is received
+        while not (self.state == self.STOPPED):
+            pass
 
     def stop(self):
-        # Kill the child process
+        if self.state != self.STARTED:
+            print "You can only stop a job that's currently running. Call ThunderStreamingContext.start() first."
+            return
         self._kill_child()
-        self.state = ThunderStreamingContext.STOPPED
+        self.state = self.STOPPED
+        self._reinitialize()
+
+    def __repr__(self):
+        return self._get_info_string()
+
+    def __str__(self):
+        return self._get_info_string()
 
 def in_thunder_streaming():
     """
@@ -186,7 +317,7 @@ def build_project():
     call(["sbt", "package"])
     return True
 
-if __name__ == '__main__':
+def configure_context():
     """
     1) Ensure that the script is being run from the Thunder-Streaming directory (unless a JAR location has been
         explicitly specified, or the $THUNDER_STREAMING_PATH environment variable is set)
@@ -206,14 +337,24 @@ if __name__ == '__main__':
     parser.add_option("-j", "--jar", dest="jarfile",
                       help="Optional Thunder-Streaming JAR file location. If this is not specified, this script attempts "
                            "to find a suitable JAR file in the current directory hierarchy.", action="store", type="string")
+    parser.add_option("-p", "--py-file", dest="pyfile",
+                      help="Optional Python script that will be executed once the ThunderStreamingContext has been initialized.",
+                      action="store", type="string")
     (options, args) = parser.parse_args()
 
     jar_opt = options.jarfile
-    thunder_path = os.environ.get("THUNDER_STREAMING_PATH")
+    py_file = options.pyfile
+    if not SPARK_PATH:
+        print "SPARK_PATH environment variable isn't set. Please point that to your Spark directory and restart."
 
     jar_file = None
-    if not jar_opt and in_thunder_streaming():
-        jar_opt, jar_file = find_jar()
+    if THUNDER_STREAMING_PATH:
+        jar_opt, jar_file = find_jar(THUNDER_STREAMING_PATH)
+    elif not jar_opt:
+        if in_thunder_streaming():
+            jar_opt, jar_file = find_jar()
+        elif THUNDER_STREAMING_PATH:
+            jar_opt, jar_file = find_jar(THUNDER_STREAMING_PATH)
         if not jar_file:
             # The JAR wasn't found, so try to build thunder-streaming, then try to find a JAR file again
             if build_project():
@@ -221,17 +362,21 @@ if __name__ == '__main__':
             else:
                 print "Could not build the thunder-streaming project. Check your project for errors then try to run this " \
                         "script again."
-                exit(-1)
-    elif not jar_opt and thunder_path:
-        jar_opt, jar_file = find_jar(thunder_path)
+                sys.exit()
+    else:
+        jar_file = zipfile.ZipFile(jar_opt, 'r')
 
     if not jar_file:
         # Couldn't find the JAR. Either we're in the thunder-streaming directory and the project couldn't be built
         # successfully, or we're not in thunder-streaming and --jar wasn't specified
         print "JAR could not be found. Make sure you're either invoking this script in the root thunder-streaming directory," \
               " or with the --jar option."
-        exit(-1)
+        sys.exit()
 
     # Parse the JAR to find relevant classes and construct a ThunderStreamingContext
-    tsc = ThunderStreamingContext.fromJARFile(jar_opt,jar_file)
+    return ThunderStreamingContext.fromJARFile(jar_opt, jar_file)
+
+# The following should be executed if the script is imported as a module and also if it's launched standalone
+tsc = configure_context()
+
 

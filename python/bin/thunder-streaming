@@ -1,0 +1,3 @@
+#!/bin/bash
+: ${THUNDER_STREAMING_PATH:?"The THUNDER_STREAMING_PATH environment variable is not set."}
+ipython -i $THUNDER_STREAMING_PATH/python/front-end/shell/shell.py
