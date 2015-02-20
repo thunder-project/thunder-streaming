@@ -13,7 +13,7 @@ from tempfile import NamedTemporaryFile
 
 ROOT_SBT_FILE = "build.sbt"
 PROJECT_NAME = "thunder-streaming"
-SPARK_PATH = os.environ.get("SPARK_PATH")
+SPARK_HOME = os.environ.get("SPARK_PATH")
 THUNDER_STREAMING_PATH = os.environ.get("THUNDER_STREAMING_PATH")
 
 class Analysis(object):
@@ -146,7 +146,7 @@ class ThunderStreamingContext(object):
     def _get_info_string(self):
         info = "\n"
         info += "JAR Location: %s\n" % self.jar_name
-        info += "Spark Location: %s\n" % SPARK_PATH
+        info += "Spark Location: %s\n" % SPARK_HOME
         info += "Thunder-Streaming Location: %s\n" % THUNDER_STREAMING_PATH
         info += "Checkpointing Directory: %s\n" % self.run_parameters.get("CHECKPOINT", "")
         info += "Master: %s\n" % self.run_parameters.get("MASTER", "")
@@ -229,7 +229,7 @@ class ThunderStreamingContext(object):
         Launch the Scala process with the XML file and additional analysis parameters as CLI arguments
         """
         full_jar = os.path.join(os.getcwd(), self.jar_name)
-        spark_path = os.path.join(SPARK_PATH, "bin", "spark-submit")
+        spark_path = os.path.join(SPARK_HOME, "bin", "spark-submit")
         base_args = [spark_path, "--class", "org.project.thunder.streaming.util.launch.Launcher", full_jar]
         self.child = Popen(base_args)
 
@@ -343,8 +343,8 @@ def configure_context():
 
     jar_opt = options.jarfile
     py_file = options.pyfile
-    if not SPARK_PATH:
-        print "SPARK_PATH environment variable isn't set. Please point that to your Spark directory and restart."
+    if not SPARK_HOME:
+        print "SPARK_HOME environment variable isn't set. Please point that to your Spark directory and restart."
 
     jar_file = None
     if THUNDER_STREAMING_PATH:
