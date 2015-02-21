@@ -66,7 +66,7 @@ object StatefulBinnedStats {
    * for the bin key. We use a StatCounterArray on
    * each key to update the statistics within each bin.
    *
-   * @param input StreamingSeries with keyed data point
+   * @param input StreamingSeries with keyed data
    * @return StreamingSeries with statistics
    */
   def fit(
