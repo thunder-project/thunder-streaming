@@ -3,7 +3,6 @@ package org.project.thunder.streaming.analyses
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.project.thunder.streaming.analyses.Analysis.OutputListType
-import org.project.thunder.streaming.outputs.Output$
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
 import scala.util.{Failure, Success, Try}
@@ -17,7 +16,7 @@ class SimpleExampleAnalysis(tssc: ThunderStreamingContext, params: Map[String, S
 
     val dataPath = params.getOrElse(SimpleExampleAnalysis.DATA_PATH_KEY, "series_data")
 
-    val data = tssc.loadStreamingSeries(dataPath, inputFormat = "text")
+    val data = tssc.loadStreamingSeries(dataPath, inputFormat = params.getOrElse("format", ""))
 
     val means = data.seriesMean()
 
@@ -29,5 +28,6 @@ class SimpleExampleAnalysis(tssc: ThunderStreamingContext, params: Map[String, S
 
 object SimpleExampleAnalysis {
   final val DATA_PATH_KEY = "data_path"
+  final val FORMAT_KEY = "format"
 }
 

@@ -10,62 +10,168 @@ import signal
 import time
 from subprocess import Popen, call
 from tempfile import NamedTemporaryFile
+from threading import Lock
+from abc import abstractmethod
 
 ROOT_SBT_FILE = "build.sbt"
 PROJECT_NAME = "thunder-streaming"
 SPARK_HOME = os.environ.get("SPARK_HOME")
 THUNDER_STREAMING_PATH = os.environ.get("THUNDER_STREAMING_PATH")
 
-class Analysis(object):
+class MappedScalaClass(object):
     """
-    This class is dynamically modified by ThunderStreamingContext when it's initialized with a JAR file
+    The super class for both Analysis and Output, this class implements generic behaviors like:
+     1) Notifying a container class when an object attribute is updated (so the XML file can be regenerated)
+     2) Maintaining a counter dictionary so that unique identifiers can be generated (to make it easier to remove
+        analyses or outputs after they've been added)
     """
 
-    def __init__(self, name, param_dict):
-        self.name = name
-        self.param_dict = param_dict
+    counter_dict = {}
 
-    @staticmethod
-    def make_method(name):
+    @classmethod
+    def handle_new_type(cls, new_type):
+        cls.counter_dict[new_type] = 0
+
+    @classmethod
+    def handle_new_instance(cls, type_name):
+        if type_name in cls.counter_dict:
+            cur_count = cls.counter_dict[type_name]
+            new_count = cur_count + 1
+            cls.counter_dict[type_name] = new_count
+            # Return a unique identifier for this instance
+            return type_name + str(new_count)
+        return None
+
+    @classmethod
+    def make_method(cls, short_name,  full_name):
         """
         Creates a method that takes a list of parameters and constructs an Analysis object with the correct name
         and parameters dictionary. These attributes will be used by the ThunderStreamingContext to build the XML file
         """
         @staticmethod
         def create_analysis(**params):
-            return Analysis(name, params)
+            identifier = cls.handle_new_instance(short_name)
+            return cls(identifier, full_name, params)
+        cls.handle_new_type(short_name)
         return create_analysis
 
+    @staticmethod
+    def get_identifier(cls, cls_type):
+        if cls_type in cls.counter_dict:
+            return cls_type + str(cls.counter_dict[cls_type])
+        raise Exception("%s of type %s does not exist." % (cls, cls_type))
 
-class Output(object):
+    def __init__(self, identifier, full_name, param_dict):
+        self._param_dict = param_dict
+        self.full_name = full_name
+        self.identifier = identifier
+        # A handler is notified whenever one of its owned objects is modified
+        self._handler = None
+
+    def set_handler(self, handler):
+        self._handler = handler
+
+    def update_parameter(self, name, value):
+        self._param_dict[name] = value
+        self.notify_handler()
+
+    def notify_handler(self):
+        if self._handler:
+            self._handler.handle_update(self)
+
+    def get_parameters(self):
+        # Return a copy so that the actual parameter dictionary is never directly modified
+        return self._param_dict.copy()
+
+
+class UpdateHandler(object):
+    """
+    Abstract base class for anything that handles parameter update notifications from managed MappedScalaClass objects.
+    """
+
+    @abstractmethod
+    def handle_update(self, updated_obj):
+        pass
+
+
+class Analysis(MappedScalaClass, UpdateHandler):
     """
     This class is dynamically modified by ThunderStreamingContext when it's initialized with a JAR file
     """
-    def __init__(self, name, param_dict):
-        self.name = name
-        self.param_dict = param_dict
 
-    @staticmethod
-    def make_method(name):
-        """
-        (See the comment in Analysis.make_method)
-        """
-        @staticmethod
-        def create_output( **params):
-            return Output(name, params)
-        return create_output
+    def __init__(self, identifier, full_name, param_dict):
+        super(Analysis, self).__init__(identifier, full_name, param_dict)
+        self.outputs = {}
 
-class ThunderStreamingContext(object):
+    def add_output(self, *outputs):
+        for output in outputs:
+            # Output ID must uniquely identify the output in a human-readable way
+            self.outputs[output.identifier] = output
+            output.set_handler(self)
+            self.notify_handler()
+
+    def remove_output(self, maybe_id):
+        output_id = None
+        if isinstance(maybe_id, str):
+            output_id = maybe_id
+        elif isinstance(maybe_id, Output):
+            output_id = maybe_id.identifier
+        if output_id in self.outputs.keys():
+            del self.outputs[output_id]
+            self.notify_handler()
+
+    def get_outputs(self):
+        return self.outputs.values()
+
+    def handle_update(self, updated_obj):
+        # If a child Output is updated, just propagate the notification up to the ThunderStreamingContext
+        self.notify_handler()
+
+    def __repr__(self):
+        desc_str = "Identifier: %s\n" % self.identifier
+        desc_str += "Class: %s\n" % self.full_name
+        desc_str += "Parameters: \n"
+        if self._param_dict:
+            for (key, value) in self._param_dict.items():
+                desc_str += "  %s: %s\n" % (key, value)
+        if self.outputs:
+            desc_str += "Outputs: \n"
+            for output in self.outputs.values():
+                desc_str += "  %s: %s\n" % (output.identifier, output.full_name)
+        return desc_str
+
+    def __str__(self):
+        return self.__repr__()
+
+class Output(MappedScalaClass):
+    """
+    This class is dynamically modified by ThunderStreamingContext when it's initialized with a JAR file
+    """
+
+    def __repr__(self):
+        desc_str = "Identifier: %s\n" % self.identifier
+        desc_str += "Class: %s\n" % self.full_name
+        desc_str += "Parameters: \n"
+        if self._param_dict:
+            for (key, value) in self._param_dict.items():
+                desc_str += "  %s: %s\n" % (key, value)
+        return desc_str
+
+    def __str__(self):
+        return self.__repr__()
+
+
+class ThunderStreamingContext(UpdateHandler):
     """
     Serves as the main interface to the Scala backend. The main thunder-streaming JAR is searched for Analysis and
     Output classes, and those classes are inserted into the object dictionaries for Analysis and Output
     (as constructors that can take a variable number of arguments, converted to XML params) so that users can type:
     >>> kmeans = Analysis.KMeans(numClusters=5)
     >>> text_output = Outputs.SeriesFileOutput(directory="kmeans_output", prefix="result", include_keys="true")
-    >>> tsc.addAnalysis(kmeans, text_output)
+    >>> tsc.add_analysis(kmeans, text_output)
     >>> tsc.start()
     Or, if they want to include multiple analysis outputs
-    >>> tsc.addAnalysis(kmeans, text_output, binary_output)
+    >>> tsc.add_analysis(kmeans, text_output, binary_output)
     """
 
     STARTED = "started"
@@ -89,11 +195,10 @@ class ThunderStreamingContext(object):
         for name in jar_file.namelist():
             if analysis_regex.match(name):
                 fixed_name = fix_name(name)
-                setattr(Analysis, fixed_name[-1], Analysis.make_method('.'.join(fixed_name)))
+                setattr(Analysis, fixed_name[-1], Analysis.make_method(fixed_name[-1], '.'.join(fixed_name)))
             elif output_regex.match(name):
-                print "Found output: %s" % name
                 fixed_name = fix_name(name)
-                setattr(Output, fixed_name[-1], Output.make_method('.'.join(fixed_name)))
+                setattr(Output, fixed_name[-1], Output.make_method(fixed_name[-1], '.'.join(fixed_name)))
         return ThunderStreamingContext(jar_name)
 
     def __init__(self, jar_name):
@@ -113,9 +218,9 @@ class ThunderStreamingContext(object):
             'CHECKPOINT': None,
         }
 
+        # Gracefully handle SIGINT and SIGTERM signals
         def handler(signum, stack):
             self._handle_int()
-
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
 
@@ -129,6 +234,7 @@ class ThunderStreamingContext(object):
             self.config_file.close()
         self.config_file = None
         self.set_config_file_path(None)
+        self.sig_handler_lock = Lock()
 
         # Reset necessary fields
         self.doc = ET.ElementTree(ET.Element("analyses"))
@@ -152,6 +258,7 @@ class ThunderStreamingContext(object):
         info += "Master: %s\n" % self.run_parameters.get("MASTER", "")
         info += "Batch Time: %s\n" % self.run_parameters.get("BATCH_TIME", "")
         info += "Configuration Path: %s\n" % self.run_parameters.get("CONFIG_FILE_PATH", "")
+        into += "State: %s\n" % self.state
         return info
 
     def set_master(self, master):
@@ -170,7 +277,7 @@ class ThunderStreamingContext(object):
         self.run_parameters['CHECKPOINT'] = cp_dir
         self._update_env()
 
-    def add_analysis(self, analysis, *outputs):
+    def add_analysis(self, analysis):
 
         if self.state == self.STARTED:
             print "You cannot add analyses after the service has been started. Call ThunderStreamingContext.stop() first"
@@ -182,18 +289,22 @@ class ThunderStreamingContext(object):
                 param_elem.set("name", name)
                 param_elem.set("value", value)
 
-        def build_outputs(analysis):
+        def build_outputs(analysis_elem):
+            outputs = analysis.get_outputs()
             for output in outputs:
-                output_child = ET.SubElement(analysis, "output")
+                output_child = ET.SubElement(analysis_elem, "output")
                 name_elem = ET.SubElement(output_child, "name")
-                name_elem.text = output.name
-                build_params(output_child, output.param_dict)
+                name_elem.text = output.full_name
+                build_params(output_child, output.get_parameters())
 
         analysis_elem = ET.SubElement(self.doc.getroot(), "analysis")
         name_elem = ET.SubElement(analysis_elem, "name")
-        name_elem.text = analysis.name
-        build_params(analysis_elem, analysis.param_dict)
+        name_elem.text = analysis.full_name
+        build_params(analysis_elem, analysis.get_parameters())
         build_outputs(analysis_elem)
+
+        # Set this TSC as the UpdateHandler for this Analysis instance
+        analysis.set_handler(self)
 
         # Write the configuration to a temporary file and record the name
         temp = NamedTemporaryFile(delete=False)
@@ -205,6 +316,18 @@ class ThunderStreamingContext(object):
         # Now the job is ready to run
         self.state = self.READY
 
+    def handle_update(self, updated_obj):
+        """
+        Called when an Analysis has been modified. Updates the XML file to reflect the modifications
+        :param updated_obj:  An Analysis whose parameters or Outputs have been modified
+        :return: None (updates the XML file)
+        """
+        if self.state == self.STARTED:
+            self.stop()
+        if self.config_file:
+            self.config_file.close()
+            self.set_config_file_path(None)
+        self.add_analysis(updated_obj)
 
     def _kill_child(self):
         """
@@ -234,15 +357,17 @@ class ThunderStreamingContext(object):
         self.child = Popen(base_args)
 
     def _handle_int(self):
+        self.sig_handler_lock.acquire()
         if self.state == self.STARTED:
             self.stop()
+            self.sig_handler_lock.release()
 
     def start(self):
         if self.state == self.STARTED:
             print "Cannot restart a job once it's already been started. Call ThunderStreamingContext.stop() first."
             return
         if self.state != self.READY:
-            print "You need to set up the analyses with ThunderStreamingContext.addAnalysis before the job can be started."
+            print "You need to set up the analyses with ThunderStreamingContext.add_analysis before the job can be started."
             return
         for (name, value) in self.run_parameters.items():
             if value is None:
@@ -299,7 +424,7 @@ def find_jar(thunder_path=None):
             if jar_regex.match(file):
                 matching_jar_names.append(os.path.join(root, file))
     for jar in matching_jar_names:
-        # In Python <2.7 you can't use a ZipFile as a context manager (no 'with' keyword)
+        # In Python <2.7 you can't use a ZipFile as a context handler (no 'with' keyword)
         try:
             jar_file = zipfile.ZipFile(jar, 'r')
             # Ensure that this JAR file looks right
