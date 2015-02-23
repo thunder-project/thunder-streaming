@@ -223,21 +223,13 @@ class ThunderStreamingContext(UpdateHandler):
             self._handle_int()
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
+        self.sig_handler_lock = Lock()
+
+        self.doc = ET.ElementTree(ET.Element("analyses"))
 
         self._reinitialize()
 
     def _reinitialize(self):
-
-        # Clean up anything leftover from a previous analysis
-        self.state = self.STOPPED
-        if self.config_file:
-            self.config_file.close()
-        self.config_file = None
-        self.set_config_file_path(None)
-        self.sig_handler_lock = Lock()
-
-        # Reset necessary fields
-        self.doc = ET.ElementTree(ET.Element("analyses"))
 
         self._update_env()
 
@@ -258,7 +250,7 @@ class ThunderStreamingContext(UpdateHandler):
         info += "Master: %s\n" % self.run_parameters.get("MASTER", "")
         info += "Batch Time: %s\n" % self.run_parameters.get("BATCH_TIME", "")
         info += "Configuration Path: %s\n" % self.run_parameters.get("CONFIG_FILE_PATH", "")
-        into += "State: %s\n" % self.state
+        info += "State: %s\n" % self.state
         return info
 
     def set_master(self, master):
@@ -357,10 +349,10 @@ class ThunderStreamingContext(UpdateHandler):
         self.child = Popen(base_args)
 
     def _handle_int(self):
-        self.sig_handler_lock.acquire()
+        # self.sig_handler_lock.acquire()
         if self.state == self.STARTED:
             self.stop()
-            self.sig_handler_lock.release()
+        # self.sig_handler_lock.release()
 
     def start(self):
         if self.state == self.STARTED:
@@ -387,7 +379,9 @@ class ThunderStreamingContext(UpdateHandler):
             print "You can only stop a job that's currently running. Call ThunderStreamingContext.start() first."
             return
         self._kill_child()
-        self.state = self.STOPPED
+        # If execution reaches this point, then an analysis which was previously started has been stopped. Since it can
+        # be restarted immediately, the new state is READY
+        self.state = self.READY
         self._reinitialize()
 
     def __repr__(self):
