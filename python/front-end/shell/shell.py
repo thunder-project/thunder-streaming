@@ -10,13 +10,13 @@ import signal
 import time
 from subprocess import Popen, call
 from tempfile import NamedTemporaryFile
-from threading import Lock
 from abc import abstractmethod
 
 ROOT_SBT_FILE = "build.sbt"
 PROJECT_NAME = "thunder-streaming"
 SPARK_HOME = os.environ.get("SPARK_HOME")
 THUNDER_STREAMING_PATH = os.environ.get("THUNDER_STREAMING_PATH")
+
 
 class MappedScalaClass(object):
     """
@@ -161,6 +161,12 @@ class Output(MappedScalaClass):
         return self.__repr__()
 
 
+class FeederConfiguration(object):
+    """
+    Parses/stores the configuration information for the feeder script. When
+    """
+
+
 class ThunderStreamingContext(UpdateHandler):
     """
     Serves as the main interface to the Scala backend. The main thunder-streaming JAR is searched for Analysis and
@@ -209,6 +215,11 @@ class ThunderStreamingContext(UpdateHandler):
         self.state = None
         self.config_file = None
 
+        # The feeder script responsible for copying properly chunked output from one directory (usually the one
+        # specified by the user) to the temporary directory being monitored by the Scala process (which is passed
+        # to it in the XML file)
+        self.feeder_child = None
+
         # Set some default run parameters (some must be specified by the user)
         self.run_parameters = {
             'MASTER': 'local[2]',
@@ -224,6 +235,7 @@ class ThunderStreamingContext(UpdateHandler):
         signal.signal(signal.SIGTERM, handler)
         # self.sig_handler_lock = Lock()
 
+        # Document that will contain the XML specification
         self.doc = ET.ElementTree(ET.Element("analyses"))
 
         self._reinitialize()
@@ -320,25 +332,32 @@ class ThunderStreamingContext(UpdateHandler):
             self.set_config_file_path(None)
         self.add_analysis(updated_obj)
 
-    def _kill_child(self):
+    def _kill_children(self):
+        self._kill_child(self.child, "Streaming server")
+        self._kill_child(self.feeder_child, "Feeder process")
+
+    def _kill_child(self, child, name):
         """
         Send a SIGTERM signal to the child (Scala process)
         """
-        print "\nWaiting up to 10s for the job to stop cleanly..."
-        self.child.terminate()
-        self.child.poll()
+        print "\nWaiting up to 10s for the %s to stop cleanly..." % name
+        child.terminate()
+        child.poll()
         # Give the child up to 10 seconds to terminate, then force kill it
         for i in xrange(10):
-            if self.child and not self.child.returncode:
+            if child and not child.returncode:
                 time.sleep(1)
-                self.child.poll()
+                child.poll()
             else:
-                print "Job stopped cleanly."
+                print "%s stopped cleanly." % name
                 return
-        print "Job isn't stopping. Force killing..."
-        self.child.kill()
+        print "%s isn't stopping. Force killing..." % name
+        child.kill()
 
-    def _start_child(self):
+    def _start_feeder_child(self):
+        pass
+
+    def _start_streaming_child(self):
         """
         Launch the Scala process with the XML file and additional analysis parameters as CLI arguments
         """
@@ -360,11 +379,16 @@ class ThunderStreamingContext(UpdateHandler):
         if self.state != self.READY:
             print "You need to set up the analyses with ThunderStreamingContext.add_analysis before the job can be started."
             return
+        if not self.feeder_child:
+            print "You have not configured a feeder script to run. Data will be read from the Data Path specified below (though " \
+                "this might not be what you want)."
         for (name, value) in self.run_parameters.items():
             if value is None:
                 print "Environment variable %s has not been defined (using one of the ThunderStreamingContext.set* methods)." \
                       "It must be set before any analyses can be launched." % name
                 return
+
+        self._start_feeder_child()
         print "Starting the streaming analyses with run configuration:"
         print self
         self._start_child()
@@ -377,7 +401,7 @@ class ThunderStreamingContext(UpdateHandler):
         if self.state != self.STARTED:
             print "You can only stop a job that's currently running. Call ThunderStreamingContext.start() first."
             return
-        self._kill_child()
+        self._kill_children()
         # If execution reaches this point, then an analysis which was previously started has been stopped. Since it can
         # be restarted immediately, the new state is READY
         self.state = self.READY
