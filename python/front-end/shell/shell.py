@@ -204,7 +204,6 @@ class ThunderStreamingContext(UpdateHandler):
     def __init__(self, jar_name):
         self.jar_name = jar_name
 
-        # Attributes used in _reinitialize
         self.child = None
         self.doc = None
         self.state = None
@@ -223,7 +222,7 @@ class ThunderStreamingContext(UpdateHandler):
             self._handle_int()
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
-        self.sig_handler_lock = Lock()
+        # self.sig_handler_lock = Lock()
 
         self.doc = ET.ElementTree(ET.Element("analyses"))
 
@@ -371,7 +370,7 @@ class ThunderStreamingContext(UpdateHandler):
         self._start_child()
         self.state = self.STARTED
         # Spin until a SIGTERM or a SIGINT is received
-        while not (self.state == self.STOPPED):
+        while self.state == self.STARTED:
             pass
 
     def stop(self):
