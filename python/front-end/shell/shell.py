@@ -371,7 +371,7 @@ class ThunderStreamingContext(UpdateHandler):
         self._start_child()
         self.state = self.STARTED
         # Spin until a SIGTERM or a SIGINT is received
-        while not (self.state == self.STOPPED):
+        while self.state == self.STARTED:
             pass
 
     def stop(self):

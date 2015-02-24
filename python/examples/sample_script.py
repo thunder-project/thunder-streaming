@@ -9,7 +9,7 @@ output1 = Output.SeriesFileOutput(directory=output_path, prefix="output", format
 
 analysis1.add_output(output1)
 
-tsc.add_analysis(analysis)
+tsc.add_analysis(analysis1)
 
 tsc.set_checkpoint_dir(checkpoint_dir)
 
