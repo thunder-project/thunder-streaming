@@ -4,6 +4,8 @@ package org.project.thunder.streaming.rdds
 import org.apache.spark.streaming.Time
 import org.apache.spark.streaming.dstream.DStream
 
+import scala.reflect.ClassTag
+
 trait StreamingData[K, V, +Self <: StreamingData[K, V, Self]] {
 
   val dstream: DStream[(K, V)]
@@ -42,9 +44,26 @@ trait StreamingData[K, V, +Self <: StreamingData[K, V, Self]] {
     }
   }
 
+  /** Does a standard filter operation on the underlying DStream and returns a new StreamingData object **/
+  def filter(func: ((K, V)) => Boolean): Self = {
+    val filtered_dstream = dstream.filter(func(_))
+    create(filtered_dstream)
+  }
+
+  /** Filters the underlying DStream based on a function applied to its values and returns a new StreamingData object **/
+  def filterOnValues(func: V => Boolean): Self = {
+    val filtered_dstream = dstream.filter{case (k, v) => func(v)}
+    create(filtered_dstream)
+  }
+
+  /** Filters the underlying DStream based on a function applied to its keys and returns a new StreamingData object **/
+  def filterOnKeys(func: K => Boolean): Self = {
+    val filtered_dstream = dstream.filter{case (k, v) => func(k)}
+    create(filtered_dstream)
+  }
+
   /** Print the records (useful for debugging) **/
   def print()
 
   protected def create(dstream: DStream[(K, V)]): Self
-
 }

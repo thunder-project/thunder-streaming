@@ -7,6 +7,8 @@ import org.apache.spark.streaming.StreamingContext._
 import org.project.thunder.streaming.util.counters.StatUpdater
 import org.project.thunder.streaming.util.io.{SeriesWriter, BinaryWriter, TextWriter}
 
+import scala.reflect.ClassTag
+
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   extends StreamingData[Int, Array[Double], StreamingSeries] {
 
@@ -50,9 +52,8 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
 
   /** Print keys and values */
   override def print() {
-    dstream.map{case (k, v) => "(" + k.toString + ") " + " (" + v.mkString(",") + ")"}.print()
+    dstream.map { case (k, v) => "(" + k.toString + ") " + " (" + v.mkString(",") + ")"}.print()
   }
 
-  override def create(dstream: DStream[(Int, Array[Double])]) = new StreamingSeries(dstream)
-
+  override protected def create(dstream: DStream[(Int, Array[Double])]): StreamingSeries = new StreamingSeries(dstream)
 }
