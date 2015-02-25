@@ -31,13 +31,14 @@ class FeederConfiguration(object):
             for regex in self.regexes:
                 yield regex
 
+    # Keyword parameters for the feeder script
     KW_PARAMS = {
         'mod_buffer_time': '--mod-buffer-time',
         'poll_time': '--poll-time',
         'linger_time': '--linger-time',
         'max_files': '--max-files',
         'image_prefix': '--imgprefix',
-        'behavioral_prefix': '--behavprefix',
+        'behaviors_prefix': '--behavprefix',
         'shape': '--shape',
         'linear': '--linear',
         'data_type': '--dtype',
@@ -56,7 +57,7 @@ class FeederConfiguration(object):
         'spark_input_dir': ''
     })
 
-    # Parameters that are converted into environment variables
+    # All entries in this dict are converted to environment variables immediately before the feeder script is started
     ENV_VAR_PARAMS = {
         'TMP_OUTPUT_DIR': ''
     }
@@ -124,6 +125,25 @@ class FeederConfiguration(object):
         return (dict([(k, self.params.get(k)) for k in self.ENV_VAR_PARAMS.keys()]),
                 list(chain([self._get_executable()], pos_args, kw_args)))
 
+    def __str__(self):
+        def params_to_str(param_dict, s):
+            for key in param_dict.keys():
+                val = self.params.get(key)
+                if val:
+                    s += "    %s: %s\n" % (key, val)
+            return s
+        s = "FeederConfiguration:\n"
+        s += "  Environment Variables:\n"
+        s = params_to_str(self.ENV_VAR_PARAMS, s)
+        s += "  Positional Arguments:\n"
+        s = params_to_str(self.POS_PARAMS, s)
+        s += "  Keyword Arguments:\n"
+        s = params_to_str(self.KW_PARAMS, s)
+        return s
+
+    def __repr__(self):
+        return self.__str__()
+
 
 """
 Example configurations
@@ -148,8 +168,13 @@ NikitasFeederConf.set_mod_buffer_time(5)
 NikitasFeederConf.set_max_files(-1)
 NikitasFeederConf.set_check_size()
 
-# Testing
-
-
-
+# Testing on cluster (Feeder output and Spark input set at the same time elsewhere)
+ClusterTestingFeederConf = FeederConfiguration()
+ClusterTestingFeederConf.set_images_dir("/groups/freeman/freemanlab/Streaming/demo_2015_02_20b/registered_im")
+ClusterTestingFeederConf.set_behaviors_dir("/groups/freeman/freemanlab/Streaming/demo_2015_02_20b/registered_bv")
+ClusterTestingFeederConf.set_max_files(40)
+ClusterTestingFeederConf.set_image_prefix("images")
+ClusterTestingFeederConf.set_behaviors_prefix("behaviour")
+ClusterTestingFeederConf.set_poll_time(15.0)
+ClusterTestingFeederConf.set_linger_time(300.0)
 

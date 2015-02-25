@@ -126,20 +126,24 @@ class Analysis(MappedScalaClass, UpdateHandler):
         return self.outputs.values()
 
     def handle_update(self, updated_obj):
-        # If a child Output is updated, just propagate the notification up to the ThunderStreamingContext
+        """
+        This method is invoked whenever a child Output is updated. It will propagate the change notification back up to
+         the ThunderStreamingContext, which will update the XML file accordingly.
+        """
         self.notify_handler()
 
     def __repr__(self):
-        desc_str = "Identifier: %s\n" % self.identifier
-        desc_str += "Class: %s\n" % self.full_name
-        desc_str += "Parameters: \n"
+        desc_str = "Analysis: \n"
+        desc_str += "  Identifier: %s\n" % self.identifier
+        desc_str += "  Class: %s\n" % self.full_name
+        desc_str += "  Parameters: \n"
         if self._param_dict:
             for (key, value) in self._param_dict.items():
-                desc_str += "  %s: %s\n" % (key, value)
+                desc_str += "    %s: %s\n" % (key, value)
         if self.outputs:
-            desc_str += "Outputs: \n"
+            desc_str += "  Outputs: \n"
             for output in self.outputs.values():
-                desc_str += "  %s: %s\n" % (output.identifier, output.full_name)
+                desc_str += "    %s: %s\n" % (output.identifier, output.full_name)
         return desc_str
 
     def __str__(self):
@@ -151,22 +155,17 @@ class Output(MappedScalaClass):
     """
 
     def __repr__(self):
-        desc_str = "Identifier: %s\n" % self.identifier
-        desc_str += "Class: %s\n" % self.full_name
-        desc_str += "Parameters: \n"
+        desc_str = "Output: \n"
+        desc_str += "  Identifier: %s\n" % self.identifier
+        desc_str += "  Class: %s\n" % self.full_name
+        desc_str += "  Parameters: \n"
         if self._param_dict:
             for (key, value) in self._param_dict.items():
-                desc_str += "  %s: %s\n" % (key, value)
+                desc_str += "    %s: %s\n" % (key, value)
         return desc_str
 
     def __str__(self):
         return self.__repr__()
-
-
-class FeederConfiguration(object):
-    """
-    Parses/stores the configuration information for the feeder script. When
-    """
 
 
 class ThunderStreamingContext(UpdateHandler):
@@ -176,10 +175,12 @@ class ThunderStreamingContext(UpdateHandler):
     (as constructors that can take a variable number of arguments, converted to XML params) so that users can type:
     >>> kmeans = Analysis.KMeans(numClusters=5)
     >>> text_output = Outputs.SeriesFileOutput(directory="kmeans_output", prefix="result", include_keys="true")
-    >>> tsc.add_analysis(kmeans, text_output)
+    >>> kmeans.add_output(text_output)
+    >>> tsc.add_analysis(kmeans)
     >>> tsc.start()
     Or, if they want to include multiple analysis outputs
-    >>> tsc.add_analysis(kmeans, text_output, binary_output)
+    >>> kmeans.add_output(output1, output2, ...)
+    >>> tsc.add_analysis(kmeans)
     """
 
     STARTED = "started"
@@ -257,15 +258,15 @@ class ThunderStreamingContext(UpdateHandler):
                 os.putenv(name, value)
 
     def _get_info_string(self):
-        info = "\n"
-        info += "JAR Location: %s\n" % self.jar_name
-        info += "Spark Location: %s\n" % SPARK_HOME
-        info += "Thunder-Streaming Location: %s\n" % THUNDER_STREAMING_PATH
-        info += "Checkpointing Directory: %s\n" % self.run_parameters.get("CHECKPOINT", "")
-        info += "Master: %s\n" % self.run_parameters.get("MASTER", "")
-        info += "Batch Time: %s\n" % self.run_parameters.get("BATCH_TIME", "")
-        info += "Configuration Path: %s\n" % self.run_parameters.get("CONFIG_FILE_PATH", "")
-        info += "State: %s\n" % self.state
+        info = "ThunderStreamingContext: \n"
+        info += "  JAR Location: %s\n" % self.jar_name
+        info += "  Spark Location: %s\n" % SPARK_HOME
+        info += "  Thunder-Streaming Location: %s\n" % THUNDER_STREAMING_PATH
+        info += "  Checkpointing Directory: %s\n" % self.run_parameters.get("CHECKPOINT", "")
+        info += "  Master: %s\n" % self.run_parameters.get("MASTER", "")
+        info += "  Batch Time: %s\n" % self.run_parameters.get("BATCH_TIME", "")
+        info += "  Configuration Path: %s\n" % self.run_parameters.get("CONFIG_FILE_PATH", "")
+        info += "  State: %s\n" % self.state
         return info
 
     def set_master(self, master):
@@ -343,6 +344,17 @@ class ThunderStreamingContext(UpdateHandler):
         self._kill_child(self.streamer_child, "Streaming server")
         self._kill_child(self.feeder_child, "Feeder process")
 
+    def _start_children(self):
+
+        if self.feeder_conf:
+            print "Starting the feeder script with configuration:"
+            print self.feeder_conf
+            self._start_feeder_child()
+
+        print "Starting the streaming analyses with run configuration:"
+        print self
+        self._start_child()
+
     def _kill_child(self, child, name):
         """
         Send a SIGTERM signal to the child (Scala process)
@@ -393,7 +405,7 @@ class ThunderStreamingContext(UpdateHandler):
             print "You need to set up the analyses with ThunderStreamingContext.add_analysis before the job can be started."
             return
         if not self.feeder_child:
-            print "You have not configured a feeder script to run. Data will be read from the Data Path specified below (though " \
+            print "You have not configured a feeder script to run. Data will be read from the data path specified below (though " \
                 "this might not be what you want)."
         for (name, value) in self.run_parameters.items():
             if value is None:
@@ -401,13 +413,7 @@ class ThunderStreamingContext(UpdateHandler):
                       "It must be set before any analyses can be launched." % name
                 return
 
-        print "Starting the feeder script with configuration:"
-        print self.feeder_conf
-        self._start_feeder_child()
-
-        print "Starting the streaming analyses with run configuration:"
-        print self
-        self._start_child()
+        self._start_children()
 
         self.state = self.STARTED
         # Spin until a SIGTERM or a SIGINT is received
