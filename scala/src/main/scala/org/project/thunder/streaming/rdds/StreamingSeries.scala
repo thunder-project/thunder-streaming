@@ -27,12 +27,6 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
     create(output)
   }
 
-  /** Maintains a running count of the number of records for each key in a StreamingSeries DStream */
-  def count(): StreamingSeries = {
-    val counted = dstream.reduceByKey((r1, r2) => new Array(r1.length + r2.length))
-    create(counted)
-  }
-
   private def save(writer: SeriesWriter, directory: String, prefix: String): Unit = {
     dstream.foreachRDD((rdd, time) => {
       val data = rdd.collect()
