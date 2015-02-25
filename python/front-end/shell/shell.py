@@ -11,6 +11,8 @@ import time
 from subprocess import Popen, call
 from tempfile import NamedTemporaryFile
 from abc import abstractmethod
+from feeder_configuration import *
+
 
 ROOT_SBT_FILE = "build.sbt"
 PROJECT_NAME = "thunder-streaming"
@@ -210,7 +212,7 @@ class ThunderStreamingContext(UpdateHandler):
     def __init__(self, jar_name):
         self.jar_name = jar_name
 
-        self.child = None
+        self.streamer_child = None
         self.doc = None
         self.state = None
         self.config_file = None
@@ -219,6 +221,8 @@ class ThunderStreamingContext(UpdateHandler):
         # specified by the user) to the temporary directory being monitored by the Scala process (which is passed
         # to it in the XML file)
         self.feeder_child = None
+        # The FeederConfiguration used to start the feeder_child
+        self.feeder_conf = None
 
         # Set some default run parameters (some must be specified by the user)
         self.run_parameters = {
@@ -245,7 +249,7 @@ class ThunderStreamingContext(UpdateHandler):
         self._update_env()
 
         # The child process has not been created yet
-        self.child = None
+        self.streamer_child = None
 
     def _update_env(self):
         for (name, value) in self.run_parameters.items():
@@ -279,6 +283,9 @@ class ThunderStreamingContext(UpdateHandler):
     def set_checkpoint_dir(self, cp_dir):
         self.run_parameters['CHECKPOINT'] = cp_dir
         self._update_env()
+
+    def set_feeder_conf(self, feeder_conf):
+        self.feeder_conf = feeder_conf
 
     def add_analysis(self, analysis):
 
@@ -333,7 +340,7 @@ class ThunderStreamingContext(UpdateHandler):
         self.add_analysis(updated_obj)
 
     def _kill_children(self):
-        self._kill_child(self.child, "Streaming server")
+        self._kill_child(self.streamer_child, "Streaming server")
         self._kill_child(self.feeder_child, "Feeder process")
 
     def _kill_child(self, child, name):
@@ -355,7 +362,13 @@ class ThunderStreamingContext(UpdateHandler):
         child.kill()
 
     def _start_feeder_child(self):
-        pass
+        if not self.feeder_conf:
+            print "You must set the feeder script configuration (using self.set_feeder_conf) before starting the feeder."
+            return
+        (env_vars, cmd) = self.feeder_conf.generate_command()
+        for (key, value) in env_vars.items():
+            os.putenv(key, value)
+        self.feeder_child = Popen(cmd)
 
     def _start_streaming_child(self):
         """
@@ -364,7 +377,7 @@ class ThunderStreamingContext(UpdateHandler):
         full_jar = os.path.join(os.getcwd(), self.jar_name)
         spark_path = os.path.join(SPARK_HOME, "bin", "spark-submit")
         base_args = [spark_path, "--class", "org.project.thunder.streaming.util.launch.Launcher", full_jar]
-        self.child = Popen(base_args)
+        self.streamer_child = Popen(base_args)
 
     def _handle_int(self):
         # self.sig_handler_lock.acquire()
@@ -388,10 +401,14 @@ class ThunderStreamingContext(UpdateHandler):
                       "It must be set before any analyses can be launched." % name
                 return
 
+        print "Starting the feeder script with configuration:"
+        print self.feeder_conf
         self._start_feeder_child()
+
         print "Starting the streaming analyses with run configuration:"
         print self
         self._start_child()
+
         self.state = self.STARTED
         # Spin until a SIGTERM or a SIGINT is received
         while self.state == self.STARTED:
@@ -521,4 +538,4 @@ def configure_context():
 tsc = configure_context()
 print "\nAccess the global ThunderStreamingContext through the 'tsc' object"
 
-
+print NicksFeederConf.generate_command()
