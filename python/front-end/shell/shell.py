@@ -229,6 +229,9 @@ class ThunderStreamingContext(UpdateHandler):
         self.run_parameters = {
             'MASTER': 'local[2]',
             'BATCH_TIME': '10',
+            # TODO FOR TESTING ONLY
+            'PARALLELISM': '100',
+            'EXECUTOR_MEMORY': '100G',
             'CONFIG_FILE_PATH': None,
             'CHECKPOINT': None,
         }
@@ -353,7 +356,7 @@ class ThunderStreamingContext(UpdateHandler):
 
         print "Starting the streaming analyses with run configuration:"
         print self
-        self._start_child()
+        self._start_streaming_child()
 
     def _kill_child(self, child, name):
         """

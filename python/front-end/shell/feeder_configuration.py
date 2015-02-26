@@ -5,7 +5,7 @@ from itertools import chain
 from collections import OrderedDict
 
 THUNDER_STREAMING_PATH = os.environ.get("THUNDER_STREAMING_PATH")
-FEEDER_DIR = "/python/thunderfeeder/"
+FEEDER_DIR = "python/thunderfeeder"
 GSS_FEEDER_PATH = os.path.join(THUNDER_STREAMING_PATH, FEEDER_DIR, "grouping_series_stream_feeder.py")
 SS_FEEDER_PATH = os.path.join(THUNDER_STREAMING_PATH, FEEDER_DIR, "series_stream_feeder.py")
 
@@ -115,15 +115,20 @@ class FeederConfiguration(object):
         def build_arg(param_dict, p):
             prefix = param_dict.get(p)
             val = self.params.get(p)
-            if val:
-                return prefix + " " + val
-            return ''
+            if val and prefix:
+                return [prefix, val]
+            elif val:
+                return [val]
+            return []
 
-        pos_args = [build_arg(self.POS_PARAMS, p) for p in self.POS_PARAMS.keys()]
-        kw_args = filter(lambda x: x, [build_arg(self.KW_PARAMS, p) for p in self.KW_PARAMS.keys()])
+        def remove_empty_elems(list):
+            return filter(lambda x: x, list)
+
+        pos_args = remove_empty_elems([build_arg(self.POS_PARAMS, p) for p in self.POS_PARAMS.keys()])
+        kw_args = remove_empty_elems([build_arg(self.KW_PARAMS, p) for p in self.KW_PARAMS.keys()])
 
         return (dict([(k, self.params.get(k)) for k in self.ENV_VAR_PARAMS.keys()]),
-                list(chain([self._get_executable()], pos_args, kw_args)))
+                list(chain([self._get_executable()], *pos_args, *kw_args)))
 
     def __str__(self):
         def params_to_str(param_dict, s):

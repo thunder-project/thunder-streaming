@@ -22,7 +22,10 @@ object Launcher {
 
     println("filePath: %s".format(filePath))
 
-    val conf = new SparkConf().setMaster(master).setAppName("ExampleLoadStreaming")
+    val conf = new SparkConf().setMaster(master)
+      .setAppName("ExampleLoadStreaming")
+      .set("spark.default.parallelism", System.getenv("PARALLELISM"))
+      .set("spark.executor.memory", System.getenv("EXECUTOR_MEMORY"))
 
     val ssc = new StreamingContext(conf, Seconds(batchTime))
 

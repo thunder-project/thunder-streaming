@@ -37,12 +37,6 @@ class SeriesMeanAnalysis(tssc: ThunderStreamingContext, params: Map[String, Stri
   }
 }
 
-class SeriesCountAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
-  def analyze(data: StreamingSeries): StreamingSeries = {
-    data.count()
-  }
-}
-
 class SeriesNoopAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     data
