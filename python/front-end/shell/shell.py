@@ -229,11 +229,12 @@ class ThunderStreamingContext(UpdateHandler):
         self.run_parameters = {
             'MASTER': 'local[2]',
             'BATCH_TIME': '10',
+            'CONFIG_FILE_PATH': None,
+            'CHECKPOINT': None,
             # TODO FOR TESTING ONLY
             'PARALLELISM': '100',
             'EXECUTOR_MEMORY': '100G',
-            'CONFIG_FILE_PATH': None,
-            'CHECKPOINT': None,
+
         }
 
         # Gracefully handle SIGINT and SIGTERM signals
@@ -243,10 +244,12 @@ class ThunderStreamingContext(UpdateHandler):
         signal.signal(signal.SIGTERM, handler)
         # self.sig_handler_lock = Lock()
 
+        self._reset_document()
+        self._reinitialize()
+
+    def _reset_document(self):
         # Document that will contain the XML specification
         self.doc = ET.ElementTree(ET.Element("analyses"))
-
-        self._reinitialize()
 
     def _reinitialize(self):
 
@@ -341,6 +344,7 @@ class ThunderStreamingContext(UpdateHandler):
         if self.config_file:
             self.config_file.close()
             self.set_config_file_path(None)
+        self._reset_document()
         self.add_analysis(updated_obj)
 
     def _kill_children(self):

@@ -9,7 +9,7 @@ FEEDER_DIR = "python/thunderfeeder"
 GSS_FEEDER_PATH = os.path.join(THUNDER_STREAMING_PATH, FEEDER_DIR, "grouping_series_stream_feeder.py")
 SS_FEEDER_PATH = os.path.join(THUNDER_STREAMING_PATH, FEEDER_DIR, "series_stream_feeder.py")
 
-DEFAULT_TMP_DIR = "/groups/freeman/streamingtmp/"
+DEFAULT_TMP_DIR = "/nobackup/freeman/streamingtmp/"
 
 
 class FeederConfiguration(object):
@@ -59,7 +59,7 @@ class FeederConfiguration(object):
 
     # All entries in this dict are converted to environment variables immediately before the feeder script is started
     ENV_VAR_PARAMS = {
-        'TMP_OUTPUT_DIR': ''
+        'TMP': ''
     }
 
     def __init__(self):
@@ -74,7 +74,7 @@ class FeederConfiguration(object):
         for (n, v) in chain(self.KW_PARAMS.items(), self.POS_PARAMS.items(), self.ENV_VAR_PARAMS.items()):
             self.__dict__['set_' + n.lower()] = _update_param(n)
 
-        self.set_tmp_output_dir(DEFAULT_TMP_DIR)
+        self.set_tmp(DEFAULT_TMP_DIR)
 
     def _get_executable(self):
         if self.params.get('behaviors_dir'):
@@ -126,9 +126,15 @@ class FeederConfiguration(object):
 
         pos_args = remove_empty_elems([build_arg(self.POS_PARAMS, p) for p in self.POS_PARAMS.keys()])
         kw_args = remove_empty_elems([build_arg(self.KW_PARAMS, p) for p in self.KW_PARAMS.keys()])
+        arg_list = list(chain(*(pos_args + kw_args)))
+
+        # insert the executable name into the argument list
+        arg_list.insert(0, self._get_executable())
 
         return (dict([(k, self.params.get(k)) for k in self.ENV_VAR_PARAMS.keys()]),
-                list(chain([self._get_executable()], *pos_args, *kw_args)))
+                arg_list)
+
+
 
     def __str__(self):
         def params_to_str(param_dict, s):
@@ -160,7 +166,10 @@ NicksFeederConf.set_images_dir("/groups/freeman/freemanlab/Streaming/demo_2015_0
 NicksFeederConf.set_behaviors_dir("/groups/freeman/freemanlab/Streaming/demo_2015_01_16/registered_bv")
 NicksFeederConf.set_spark_input_dir("/nobackup/freeman/streaminginput/")
 NicksFeederConf.set_max_files(40)
-NicksFeederConf.set_linger_time(60.0)
+NicksFeederConf.set_linger_time(300.0)
+NicksFeederConf.set_poll_time(15.0)
+NicksFeederConf.set_image_prefix("images")
+NicksFeederConf.set_behaviors_prefix("behaviours")
 
 # Nikita's
 NikitasFeederConf = FeederConfiguration()
