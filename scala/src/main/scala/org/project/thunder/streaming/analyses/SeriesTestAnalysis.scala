@@ -43,5 +43,19 @@ class SeriesNoopAnalysis(tssc: ThunderStreamingContext, params: Map[String, Stri
   }
 }
 
+class SeriesStatsAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+  def analyze(data: StreamingSeries): StreamingSeries = {
+    data.seriesStat()
+  }
+}
+
+class SeriesCountingAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+  def analyze(data: StreamingSeries): StreamingSeries = {
+    val stats = data.seriesStat()
+    stats.applyValues(arr => arr.)
+    stats.applyValues(arr => new Array(arr[0]))
+  }
+}
+
 
 
