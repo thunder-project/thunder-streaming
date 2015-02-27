@@ -2,9 +2,6 @@ package org.project.thunder.streaming.util.launch
 
 import scala.xml.{Node, NodeSeq}
 
-/**
- * Created by Andrew on 2/11/15.
- */
 object Util {
 
   /**

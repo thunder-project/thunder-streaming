@@ -4,9 +4,6 @@ import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
-/**
- * Created by Andrew on 2/12/15.
- */
 object Launcher {
 
   def main(args: Array[String]): Unit = {
@@ -38,7 +35,7 @@ object Launcher {
     ssc.start()
     ssc.awaitTermination()
 
-    // TODO cleanup
+    // TODO cleanup (?)
   }
 
 }

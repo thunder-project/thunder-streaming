@@ -353,14 +353,19 @@ class ThunderStreamingContext(UpdateHandler):
 
     def _start_children(self):
 
+        print "Starting the streaming analyses with run configuration:"
+        print self
+        self._start_streaming_child()
+
+        sleep_time = 5
+        print "Sleeping for %d seconds before starting the feeder script..." % sleep_time
+        time.sleep(sleep_time)
+
         if self.feeder_conf:
             print "Starting the feeder script with configuration:"
             print self.feeder_conf
             self._start_feeder_child()
 
-        print "Starting the streaming analyses with run configuration:"
-        print self
-        self._start_streaming_child()
 
     def _kill_child(self, child, name):
         """
