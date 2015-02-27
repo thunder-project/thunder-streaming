@@ -1,7 +1,7 @@
 package org.project.thunder.streaming.util.io
 
 import java.io.{File, FileOutputStream}
-import java.nio.ByteBuffer
+import java.nio.{ByteOrder, ByteBuffer}
 
 /*** Class for writing an RDD to a flat binary file */
 
@@ -17,12 +17,12 @@ class BinaryWriter extends SeriesWriter with Serializable {
       val arr = item._2
       val bufSize = if (withIndices) (4 + 8 * arr.length) else 8 * arr.length
       val bbuf: ByteBuffer = ByteBuffer.allocate(bufSize)
+      bbuf.order(ByteOrder.LITTLE_ENDIAN)
       if (withIndices) {
-        bbuf.putInt(0, index)
-        (0 until arr.length).foreach(i => bbuf.putDouble(i + 1, arr(i)))
-      } else {
-          (0 until arr.length).foreach(i => bbuf.putDouble(i, arr(i)))
+        bbuf.putInt(index)
       }
+      arr.foreach(bbuf.putDouble(_))
+      bbuf.flip()
       while (bbuf.hasRemaining) {
         channel.write(bbuf)
       }

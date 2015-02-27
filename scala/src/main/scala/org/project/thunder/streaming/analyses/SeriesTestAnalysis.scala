@@ -4,6 +4,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.project.thunder.streaming.analyses.Analysis.OutputListType
 import org.project.thunder.streaming.rdds.StreamingSeries
+import org.project.thunder.streaming.regression.StatefulLinearRegression
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
 import scala.util.{Failure, Success, Try}
@@ -52,10 +53,29 @@ class SeriesStatsAnalysis(tssc: ThunderStreamingContext, params: Map[String, Str
 class SeriesCountingAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     val stats = data.seriesStat()
-    stats.applyValues(arr => arr.)
-    stats.applyValues(arr => new Array(arr[0]))
+    val counts = stats.applyValues(arr => Array(arr(0)))
+    counts
   }
 }
+
+class SeriesCombinedAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+    def analyze(data: StreamingSeries): StreamingSeries = {
+      val means = data.seriesMean()
+      val stats = data.seriesStat()
+      val secondMeans = data.seriesMean()
+      new StreamingSeries(secondMeans.dstream.union(means.dstream.union(stats.dstream)))
+    }
+}
+
+class SeriesRegressionAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+      def analyze(data: StreamingSeries): StreamingSeries = {
+        val slr = new StatefulLinearRegression()
+        val fittedStream = slr.runStreaming(data.dstream)
+        val weightsStream = fittedStream.map{case (key, model) => (key, model.weights)}
+        new StreamingSeries(weightsStream)
+      }
+}
+
 
 
 

@@ -10,7 +10,7 @@ import org.project.thunder.streaming.util.io.{SeriesWriter, BinaryWriter, TextWr
 import scala.reflect.ClassTag
 
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
-  extends StreamingData[Int, Array[Double], StreamingSeries] {
+  extends StreamingData[Array[Double], StreamingSeries] {
 
 
   /** Compute a running estate of several statistics */
