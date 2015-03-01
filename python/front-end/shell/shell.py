@@ -392,6 +392,14 @@ class ThunderStreamingContext(UpdateHandler):
         (env_vars, cmd) = self.feeder_conf.generate_command()
         for (key, value) in env_vars.items():
             os.putenv(key, value)
+
+        # Remove any files remaining in the feeder's output directory (the streamer's input 
+        # directory), as they can only be leftovers from a previous analysis and are unusable.
+        input_dir = self.feeder_conf.params.get('spark_input_dir')
+        if input_dir:
+            for path in [os.path.abspath(f) for f in in os.listdir(input_dir)]:
+                os.remove(path)
+
         self.feeder_child = Popen(cmd)
 
     def _start_streaming_child(self):
