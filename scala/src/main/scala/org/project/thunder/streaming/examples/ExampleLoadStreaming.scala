@@ -21,11 +21,9 @@ object ExampleLoadStreaming {
 
     val tssc = new ThunderStreamingContext(ssc)
 
-    val data = tssc.loadStreamingSeries(dataPath, inputFormat="text")
+    val data = tssc.loadStreamingSeries(dataPath, inputFormat="binary")
 
-    val means = data.seriesMean()
-
-    means.print()
+    data.print()
 
     ssc.start()
     ssc.awaitTermination()
