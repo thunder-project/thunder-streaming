@@ -7,9 +7,6 @@ import org.project.thunder.streaming.util.ThunderStreamingContext
 import scala.util.{Failure, Success, Try}
 import scala.xml.{NodeSeq}
 
-/**
- * Created by Andrew on 2/11/15.
- */
 class AnalysisManager(tssc: ThunderStreamingContext, path: String) {
 
   type AnalysesList = List[(Try[Analysis[_, _]], List[Try[Output[_ <: List[_]]]])]

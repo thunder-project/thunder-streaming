@@ -357,7 +357,9 @@ class ThunderStreamingContext(UpdateHandler):
         print self
         self._start_streaming_child()
 
-        time.sleep(5)
+        sleep_time = 5
+        print "Sleeping for %d seconds before starting the feeder script..." % sleep_time
+        time.sleep(sleep_time)
 
         if self.feeder_conf:
             print "Starting the feeder script with configuration:"
