@@ -555,5 +555,3 @@ def configure_context():
 # The following should be executed if the script is imported as a module and also if it's launched standalone
 tsc = configure_context()
 print "\nAccess the global ThunderStreamingContext through the 'tsc' object"
-
-print NicksFeederConf.generate_command()
