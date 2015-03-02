@@ -1,4 +1,5 @@
-from python.thunder.streaming.shell.mapped_scala_class import MappedScalaClass
+from thunder.streaming.shell.mapped_scala_class import MappedScalaClass
+
 
 class Output(MappedScalaClass):
     """

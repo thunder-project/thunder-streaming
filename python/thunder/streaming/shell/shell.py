@@ -1,4 +1,7 @@
 #!/usr/bin/python
+"""
+The main entry point for the Python shell
+"""
 
 import optparse as opt
 import zipfile
@@ -6,27 +9,11 @@ import sys
 import os
 import re
 from subprocess import call
-from abc import abstractmethod
 
 from thunder.streaming.shell.feeder_configuration import *
-from python.thunder.streaming.shell.thunder_streaming_context import ThunderStreamingContext
+from thunder.streaming.shell.thunder_streaming_context import ThunderStreamingContext
 
-
-ROOT_SBT_FILE = "build.sbt"
-PROJECT_NAME = "thunder-streaming"
-SPARK_HOME = os.environ.get("SPARK_HOME")
-THUNDER_STREAMING_PATH = os.environ.get("THUNDER_STREAMING_PATH")
-
-
-class UpdateHandler(object):
-    """
-    Abstract base class for anything that handles parameter update notifications from managed MappedScalaClass objects.
-    """
-
-    @abstractmethod
-    def handle_update(self, updated_obj):
-        pass
-
+from thunder.streaming.shell.settings import *
 
 def in_thunder_streaming():
     """

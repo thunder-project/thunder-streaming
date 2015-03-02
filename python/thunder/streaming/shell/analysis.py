@@ -1,6 +1,6 @@
-from python.thunder.streaming.shell.mapped_scala_class import MappedScalaClass
-from python.thunder.streaming.shell.shell import UpdateHandler
-from python.thunder.streaming.shell.output import Output
+from thunder.streaming.shell.mapped_scala_class import MappedScalaClass
+from thunder.streaming.shell.update_handler import UpdateHandler
+from thunder.streaming.shell.output import Output
 
 
 class Analysis(MappedScalaClass, UpdateHandler):
