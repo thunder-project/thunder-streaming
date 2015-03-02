@@ -11,13 +11,14 @@ from abc import abstractmethod
 from thunder.streaming.shell.feeder_configuration import *
 from python.thunder.streaming.shell.thunder_streaming_context import ThunderStreamingContext
 
+
 ROOT_SBT_FILE = "build.sbt"
 PROJECT_NAME = "thunder-streaming"
 SPARK_HOME = os.environ.get("SPARK_HOME")
 THUNDER_STREAMING_PATH = os.environ.get("THUNDER_STREAMING_PATH")
 
 
- class UpdateHandler(object):
+class UpdateHandler(object):
     """
     Abstract base class for anything that handles parameter update notifications from managed MappedScalaClass objects.
     """
@@ -41,6 +42,7 @@ def in_thunder_streaming():
     except IOError as e:
         # File does not exist
         return False
+
 
 def find_jar(thunder_path=None):
     """
@@ -67,10 +69,12 @@ def find_jar(thunder_path=None):
             continue
     return None, None
 
+
 def build_project():
     # TODO: This will only work from the project directory
     call(["sbt", "package"])
     return True
+
 
 def configure_context():
     """
@@ -91,7 +95,8 @@ def configure_context():
     parser = opt.OptionParser()
     parser.add_option("-j", "--jar", dest="jarfile",
                       help="Optional Thunder-Streaming JAR file location. If this is not specified, this script attempts "
-                           "to find a suitable JAR file in the current directory hierarchy.", action="store", type="string")
+                           "to find a suitable JAR file in the current directory hierarchy.", action="store",
+                      type="string")
     parser.add_option("-p", "--py-file", dest="pyfile",
                       help="Optional Python script that will be executed once the ThunderStreamingContext has been initialized.",
                       action="store", type="string")
@@ -116,7 +121,7 @@ def configure_context():
                 jar_opt, jar_file = find_jar()
             else:
                 print "Could not build the thunder-streaming project. Check your project for errors then try to run this " \
-                        "script again."
+                      "script again."
                 sys.exit()
     else:
         jar_file = zipfile.ZipFile(jar_opt, 'r')

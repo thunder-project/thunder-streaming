@@ -2,8 +2,6 @@ from python.thunder.streaming.shell.mapped_scala_class import MappedScalaClass
 from python.thunder.streaming.shell.shell import UpdateHandler
 from python.thunder.streaming.shell.output import Output
 
-__author__ = 'osheroffa'
-
 
 class Analysis(MappedScalaClass, UpdateHandler):
     """

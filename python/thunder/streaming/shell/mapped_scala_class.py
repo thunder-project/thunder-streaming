@@ -1,5 +1,3 @@
-__author__ = 'osheroffa'
-
 
 class MappedScalaClass(object):
     """
@@ -26,14 +24,16 @@ class MappedScalaClass(object):
         return None
 
     @classmethod
-    def make_method(cls, short_name,  full_name):
+    def make_method(cls, short_name, full_name):
         """
         Creates a method that takes a list of parameters and constructs an Analysis object with the correct name
         and parameters dictionary. These attributes will be used by the ThunderStreamingContext to build the XML file
         """
+
         def create_analysis(**params):
             identifier = cls.handle_new_instance(short_name)
             return cls(identifier, full_name, params)
+
         cls.handle_new_type(short_name)
         return create_analysis
 

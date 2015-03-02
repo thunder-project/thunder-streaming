@@ -2,8 +2,6 @@ from python.thunder.streaming.shell.analysis import Analysis
 from python.thunder.streaming.shell.output import Output
 from python.thunder.streaming.shell.shell import UpdateHandler, SPARK_HOME, THUNDER_STREAMING_PATH
 
-__author__ = 'osheroffa'
-
 
 class ThunderStreamingContext(UpdateHandler):
     """
@@ -34,10 +32,12 @@ class ThunderStreamingContext(UpdateHandler):
         # TODO: Your classes should be renamed to make more sense.
         analysis_regex = re.compile("^.*\/[^\/]+Analysis\.class")
         output_regex = re.compile("^.*\/[^\/]+Output\.class")
+
         def fix_name(name):
             # Replace / with . and strip the .class from the end
             stripped_name = name[:-6]
             return stripped_name.split("/")
+
         for name in jar_file.namelist():
             if analysis_regex.match(name):
                 fixed_name = fix_name(name)
@@ -77,6 +77,7 @@ class ThunderStreamingContext(UpdateHandler):
         # Gracefully handle SIGINT and SIGTERM signals
         def handler(signum, stack):
             self._handle_int()
+
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
 
@@ -238,7 +239,6 @@ class ThunderStreamingContext(UpdateHandler):
         # self.sig_handler_lock.acquire()
         if self.state == self.STARTED:
             self.stop()
-        # self.sig_handler_lock.release()
 
     def start(self):
         if self.state == self.STARTED:
@@ -249,7 +249,7 @@ class ThunderStreamingContext(UpdateHandler):
             return
         if not self.feeder_conf:
             print "You have not configured a feeder script to run. Data will be read from the data path specified below (though " \
-                "this might not be what you want)."
+                  "this might not be what you want)."
         for (name, value) in self.run_parameters.items():
             if value is None:
                 print "Environment variable %s has not been defined (using one of the ThunderStreamingContext.set* methods)." \

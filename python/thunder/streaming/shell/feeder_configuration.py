@@ -69,6 +69,7 @@ class FeederConfiguration(object):
         def _update_param(n):
             def _set_update(v=''):
                 self.params[n] = self._handle_value(n, v)
+
             return _set_update
 
         for (n, v) in chain(self.KW_PARAMS.items(), self.POS_PARAMS.items(), self.ENV_VAR_PARAMS.items()):
@@ -141,6 +142,7 @@ class FeederConfiguration(object):
                 if val:
                     s += "    %s: %s\n" % (key, val)
             return s
+
         s = "FeederConfiguration:\n"
         s += "  Environment Variables:\n"
         s = params_to_str(self.ENV_VAR_PARAMS, s)

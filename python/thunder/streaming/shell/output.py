@@ -1,8 +1,5 @@
 from python.thunder.streaming.shell.mapped_scala_class import MappedScalaClass
 
-__author__ = 'osheroffa'
-
-
 class Output(MappedScalaClass):
     """
     This class is dynamically modified by ThunderStreamingContext when it's initialized with a JAR file
