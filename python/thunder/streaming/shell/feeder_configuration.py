@@ -134,8 +134,6 @@ class FeederConfiguration(object):
         return (dict([(k, self.params.get(k)) for k in self.ENV_VAR_PARAMS.keys()]),
                 arg_list)
 
-
-
     def __str__(self):
         def params_to_str(param_dict, s):
             for key in param_dict.keys():

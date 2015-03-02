@@ -3,14 +3,12 @@
 import optparse as opt
 import xml.etree.ElementTree as ET
 import zipfile
-import os
 import sys
-import re
 import signal
 import time
 from subprocess import Popen, call
-from tempfile import NamedTemporaryFile
 from abc import abstractmethod
+
 from thunder.streaming.shell.feeder_configuration import *
 
 
@@ -50,7 +48,6 @@ class MappedScalaClass(object):
         Creates a method that takes a list of parameters and constructs an Analysis object with the correct name
         and parameters dictionary. These attributes will be used by the ThunderStreamingContext to build the XML file
         """
-        @staticmethod
         def create_analysis(**params):
             identifier = cls.handle_new_instance(short_name)
             return cls(identifier, full_name, params)
@@ -353,7 +350,6 @@ class ThunderStreamingContext(UpdateHandler):
             print self.feeder_conf
             self._start_feeder_child()
 
-
     def _kill_child(self, child, name):
         """
         Send a SIGTERM signal to the child (Scala process)
@@ -452,6 +448,7 @@ class ThunderStreamingContext(UpdateHandler):
         info += "  State: %s\n" % self.state
         return info
 
+
 def in_thunder_streaming():
     """
     :return: True if in the thunder-streaming directory, False otherwise
@@ -466,6 +463,7 @@ def in_thunder_streaming():
     except IOError as e:
         # File does not exist
         return False
+
 
 def find_jar(thunder_path=None):
     """
@@ -492,10 +490,12 @@ def find_jar(thunder_path=None):
             continue
     return None, None
 
+
 def build_project():
     # TODO: This will only work from the project directory
     call(["sbt", "package"])
     return True
+
 
 def configure_context():
     """
