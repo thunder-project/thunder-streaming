@@ -7,7 +7,7 @@ import org.apache.spark.streaming.dstream.DStream
 
 import scala.reflect.ClassTag
 
-abstract class StreamingData[V: ClassTag, +Self <: StreamingData[V, Self]] {
+abstract class StreamingData[V: ClassTag, +Self <: StreamingData[V, Self]] extends Serializable {
 
   val dstream: DStream[(Int, V)]
 
