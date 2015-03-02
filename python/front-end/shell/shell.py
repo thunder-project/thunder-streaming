@@ -397,7 +397,7 @@ class ThunderStreamingContext(UpdateHandler):
         # directory), as they can only be leftovers from a previous analysis and are unusable.
         input_dir = self.feeder_conf.params.get('spark_input_dir')
         if input_dir:
-            for path in [os.path.abspath(f) for f in in os.listdir(input_dir)]:
+            for path in [os.path.abspath(os.path.join(input_dir, f)) for f in os.listdir(input_dir)]:
                 os.remove(path)
 
         self.feeder_child = Popen(cmd)
@@ -424,7 +424,7 @@ class ThunderStreamingContext(UpdateHandler):
         if self.state != self.READY:
             print "You need to set up the analyses with ThunderStreamingContext.add_analysis before the job can be started."
             return
-        if not self.feeder_child:
+        if not self.feeder_conf:
             print "You have not configured a feeder script to run. Data will be read from the data path specified below (though " \
                 "this might not be what you want)."
         for (name, value) in self.run_parameters.items():

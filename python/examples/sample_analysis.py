@@ -1,7 +1,7 @@
 
 # Replace my strings with yours
 CHECKPOINT_DIR = "/Users/osheroffa/Work/sample_data/checkpoint/"
-READ_LOCATION = "/Users/osheroffa/Work/development/sample_data/data"
+READ_LOCATION = "/Users/osheroffa/Work/development/sample_data/data_staging"
 WRITE_LOCATION = "/Users/osheroffa/Work/development/sample_data/series_output/"
 MASTER = "local[20]"
 
@@ -10,7 +10,7 @@ MASTER = "local[20]"
 
 tsc.set_checkpoint_dir(CHECKPOINT_DIR)
 
-analysis1 = Analysis.SeriesNoopAnalysis(data_path=READ_LOCATION, format="text")
+analysis1 = Analysis.SeriesMeanAnalysis(data_path=READ_LOCATION, format="text")
 
 output1 = Output.SeriesFileOutput(directory=WRITE_LOCATION, prefix="output", format="text", include_keys="true")
 

@@ -33,7 +33,6 @@ object Analysis {
     // Try to find a class with the given type name
     def extractAndFindClass(nodes: NodeSeq): Try[Class[_ <: Analysis[_, _]]] = {
       val nameNodes = nodes \ "name"
-      println("nameNodes: %s".format(nameNodes))
       if (nameNodes.length != 1) {
         Failure(new BadAnalysisConfigException("The Analysis name was not correctly specified in a single <name> element"))
       } else {
