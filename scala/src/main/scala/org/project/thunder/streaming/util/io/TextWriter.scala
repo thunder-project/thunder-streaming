@@ -1,28 +1,34 @@
 package org.project.thunder.streaming.util.io
 
-import org.apache.spark.rdd.RDD
-import java.io.File
+import java.io.{BufferedWriter, FileWriter, File}
 
 /*** Class for writing an RDD to a text file */
 
-class TextWriter extends Writer with Serializable {
+class TextWriter extends SeriesWriter with Serializable {
 
-  def write(rdd: RDD[Double], fullFile: String) {
-    val out = rdd.collect()
-    printToFile(new File(fullFile ++ ".txt"))(p => {
-      out.foreach(x => p.println("%.6f".format(x)))
+  override def extension = ".txt"
+
+  override def write(data: List[(Int, Array[Double])], file: File, withIndices: Boolean = true) = {
+    printToFile(file)(bw => {
+      // Write out the index if it exists
+      data.foreach(item => {
+        if (withIndices) {
+          bw.write("%d".format(item._1))
+        }
+        item._2.foreach(x => bw.write(" %.6f".format(x)))
+        bw.write('\n')
+      })
     })
   }
 
-  def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
-    val p = new java.io.PrintWriter(f)
+  def printToFile(f: File)(op: BufferedWriter => Unit) {
+    val bw = new BufferedWriter(new FileWriter(f, true))
     try {
-      op(p)
+      op(bw)
     } finally {
-      p.close()
+      bw.close()
     }
   }
-
 
 }
 

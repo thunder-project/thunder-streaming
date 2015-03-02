@@ -3,11 +3,15 @@ package org.project.thunder.streaming.rdds
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.StreamingContext._
 
+
 import org.project.thunder.streaming.util.counters.StatUpdater
-import org.project.thunder.streaming.util.io.{BinaryWriter, TextWriter}
+import org.project.thunder.streaming.util.io.{SeriesWriter, BinaryWriter, TextWriter}
+
+import scala.reflect.ClassTag
 
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
-  extends StreamingData[Int, Array[Double], StreamingSeries] {
+  extends StreamingData[Array[Double], StreamingSeries] {
+
 
   /** Compute a running estate of several statistics */
   def seriesStat(): StreamingSeries = {
@@ -23,21 +27,27 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
     create(output)
   }
 
+  private def save(writer: SeriesWriter, directory: String, prefix: String): Unit = {
+    dstream.foreachRDD((rdd, time) => {
+      val data = rdd.collect()
+      writer.withKeys(data.toList, time, directory, prefix)
+    })
+  }
+
   /** Save data from each batch as binary files */
-  def saveAsBinary(directory: String, fileName: Seq[String]) = {
-    new BinaryWriter().withKeys(dstream, directory, fileName)
+  def saveAsBinary(directory: String, prefix: String) = {
+    save(new BinaryWriter(), directory, prefix)
   }
 
   /** Save data from each batch as text files */
-  def saveAsText(directory: String, fileName: Seq[String]) = {
-    new TextWriter().withKeys(dstream, directory, fileName)
+  def saveAsText(directory: String, prefix: String) = {
+    save(new TextWriter(), directory, prefix)
   }
 
   /** Print keys and values */
   override def print() {
-    dstream.map{case (k, v) => "(" + k.toString + ") " + " (" + v.mkString(",") + ")"}.print()
+    dstream.map { case (k, v) => "(" + k.toString + ") " + " (" + v.mkString(",") + ")"}.print()
   }
 
-  override def create(dstream: DStream[(Int, Array[Double])]) = new StreamingSeries(dstream)
-
+  override protected def create(dstream: DStream[(Int, Array[Double])]): StreamingSeries = new StreamingSeries(dstream)
 }
