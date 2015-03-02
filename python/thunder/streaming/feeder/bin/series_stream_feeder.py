@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-"""
+"""A variant of grouping_series_stream_feeder, this script watches only a single directory for new image files,
+which it then converts into the Thunder series binary format and copies into the Spark input directory.
 """
 import logging
 import sys
 
-from stream_feeder import build_filecheck_generators, runloop
-from feeder_logger import _logger
+from thunder.streaming.feeder.core import build_filecheck_generators, runloop
+from thunder.streaming.feeder.utils.logger import global_logger
 from grouping_series_stream_feeder import SyncSeriesFeeder, get_parsing_functions
 
 
@@ -45,8 +46,8 @@ def parse_options():
 def main():
     _handler = logging.StreamHandler(sys.stdout)
     _handler.setFormatter(logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s'))
-    _logger.get().addHandler(_handler)
-    _logger.get().setLevel(logging.INFO)
+    global_logger.get().addHandler(_handler)
+    global_logger.get().setLevel(logging.INFO)
 
     opts = parse_options()
 

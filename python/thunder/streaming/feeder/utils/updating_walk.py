@@ -12,7 +12,7 @@ python updating_walk.py path_to_directory [time_per_update [start_filename]]
 import operator
 import os
 
-from feeder_logger import _logger
+from thunder.streaming.feeder.utils.logger import global_logger
 
 
 def updating_walk(dirpath, startpath=None, filefilterfunc=None):
@@ -50,9 +50,9 @@ def updating_walk(dirpath, startpath=None, filefilterfunc=None):
         raise ValueError("updating_walk must be given a path to an existing directory, got '%s'" % dirpath)
 
     def get_entries(dirpath_, test, curentry=None, inclusive=False):
-        cmp = operator.ge if inclusive else operator.gt
+        cmpr = operator.ge if inclusive else operator.gt
         if curentry:
-            entrynames = [d for d in listdir(dirpath_) if (test(join(dirpath_, d)) and cmp(d, curentry))]
+            entrynames = [d for d in listdir(dirpath_) if (test(join(dirpath_, d)) and cmpr(d, curentry))]
         else:
             entrynames = [d for d in listdir(dirpath_) if test(join(dirpath_, d))]
         # TODO: sort this in reverse order, so that can do O(1) pop() off end
@@ -91,7 +91,7 @@ def updating_walk(dirpath, startpath=None, filefilterfunc=None):
         #   conditions when satisfied.)
         if filefilterfunc is not None:
             if not filefilterfunc(candidatefile):
-                _logger.warnIfNotAlreadyGiven("Skipping file: '%s'", join(dirpath, candidatefile))
+                global_logger.warnIfNotAlreadyGiven("Skipping file: '%s'", join(dirpath, candidatefile))
                 continue
         lastfile = candidatefile
         yield join(dirpath, lastfile)
@@ -106,9 +106,9 @@ if __name__ == "__main__":
     t_up = float(sys.argv[2]) if len(sys.argv) > 2 else 1.0
     start_filename = sys.argv[3] if len(sys.argv) > 3 else ""
     now = time.time()
-    next = now + t_up
+    nxt = now + t_up
     for fname in updating_walk(sys.argv[1], startpath=start_filename):
         print fname
         now = time.time()
-        time.sleep(next - now)
-        next += t_up
+        time.sleep(nxt - now)
+        nxt += t_up

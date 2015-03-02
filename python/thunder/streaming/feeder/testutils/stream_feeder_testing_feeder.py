@@ -1,14 +1,19 @@
 #!/usr/bin/env python
+"""A testing utility script that produces randomly-generated data files.
+
+Intended use is to simulate a data generation process dropping files in a known directory
+at some fixed frequency.
+"""
 import logging
 import os
 import random
 import string
 import time
 import sys
-
 import numpy as np
 
-from feeder_logger import StreamFeederLogger as Logger
+from thunder.streaming.feeder.utils.logger import StreamFeederLogger as Logger
+
 
 _logger = Logger("feeder-feeder")
 
