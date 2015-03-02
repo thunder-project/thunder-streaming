@@ -30,7 +30,8 @@ class MappedScalaClass(object):
         and parameters dictionary. These attributes will be used by the ThunderStreamingContext to build the XML file
         """
 
-        def create_analysis(**params):
+        @classmethod
+        def create_analysis(cls, **params):
             identifier = cls.handle_new_instance(short_name)
             return cls(identifier, full_name, params)
 

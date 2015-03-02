@@ -1,3 +1,4 @@
+from thunder.streaming.shell.feeder_configuration import FeederConfiguration
 """
 Example configurations
 """
