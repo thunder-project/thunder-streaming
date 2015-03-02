@@ -5,7 +5,9 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.Time
 import org.apache.spark.streaming.dstream.DStream
 
-trait StreamingData[V, +Self <: StreamingData[V, Self]] {
+import scala.reflect.ClassTag
+
+abstract class StreamingData[V: ClassTag, +Self <: StreamingData[V, Self]] {
 
   val dstream: DStream[(Int, V)]
 

@@ -11,7 +11,7 @@ import time
 from subprocess import Popen, call
 from tempfile import NamedTemporaryFile
 from abc import abstractmethod
-from feeder_configuration import *
+from thunder.streaming.shell.feeder_configuration import *
 
 
 ROOT_SBT_FILE = "build.sbt"
