@@ -21,7 +21,7 @@ trait StreamingData[V, +Self <: StreamingData[V, Self]] {
   }
 
   /** Apply a function to the keys, and reconstruct the class */
-  def applyInteys(func: Int => Int): Self = {
+  def applyKeys(func: Int => Int): Self = {
     val output = dstream.map{p => (func(p._1), p._2)}
     create(output)
   }
