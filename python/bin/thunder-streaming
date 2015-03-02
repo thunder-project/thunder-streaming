@@ -3,6 +3,10 @@ if [ -z "$THUNDER_STREAMING_PATH" ]; then
     echo "You need to set the THUNDER_STREAMING_PATH environment variable" 
     exit 1
 fi
+PYTHON=python
+if [[ "$IPYTHON" == "1" ]]; then
+    PYTHON=ipython
+fi
 export PYTHONPATH=$PYTHONPATH:$THUNDER_STREAMING_PATH/python/
 export PYTHONSTARTUP=$THUNDER_STREAMING_PATH/python/thunder/streaming/shell/shell.py
-python
+$PYTHON
