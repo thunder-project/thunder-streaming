@@ -1,8 +1,13 @@
+"""Module for logging functionality.
+
+Defines a global logger as `global_logger`.
+"""
 import logging
 
 
 class StreamFeederLogger(object):
-
+    """Wrapper around a shared Logger instance.
+    """
     def __init__(self, name):
         self._name = name
         self._logger = None
@@ -21,4 +26,4 @@ class StreamFeederLogger(object):
             self._warn_set.add(keys)
             self.get().warn(*args)
 
-_logger = StreamFeederLogger("streamfeeder")
+global_logger = StreamFeederLogger("streamfeeder")
