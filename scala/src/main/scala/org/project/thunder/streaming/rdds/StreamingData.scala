@@ -1,5 +1,6 @@
 package org.project.thunder.streaming.rdds
 
+import org.apache.spark.SparkContext._
 
 import org.apache.spark.streaming.Time
 import org.apache.spark.streaming.dstream.DStream
@@ -38,7 +39,7 @@ trait StreamingData[V, +Self <: StreamingData[V, Self]] {
   def outputWithKeys(func: List[(List[(Int, V)], Time) => Unit]): Unit = {
     dstream.foreachRDD { (rdd, time) =>
       // Sort the rdd by index, then collect
-      val out = rdd.sortBy(_._1).collect().toList
+      val out = rdd.sortByKey().collect().toList
       func.foreach(f => f(out, time))
     }
   }

@@ -176,11 +176,11 @@ class ThunderStreamingContext(UpdateHandler):
     >>> kmeans = Analysis.KMeans(numClusters=5)
     >>> text_output = Outputs.SeriesFileOutput(directory="kmeans_output", prefix="result", include_keys="true")
     >>> kmeans.add_output(text_output)
-    >>> tsc.add_analysis(kmeans)
-    >>> tsc.start()
+    >>> tssc.add_analysis(kmeans)
+    >>> tssc.start()
     Or, if they want to include multiple analysis outputs
     >>> kmeans.add_output(output1, output2, ...)
-    >>> tsc.add_analysis(kmeans)
+    >>> tssc.add_analysis(kmeans)
     """
 
     STARTED = "started"
@@ -242,7 +242,6 @@ class ThunderStreamingContext(UpdateHandler):
             self._handle_int()
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
-        # self.sig_handler_lock = Lock()
 
         self._reset_document()
         self._reinitialize()
@@ -262,18 +261,6 @@ class ThunderStreamingContext(UpdateHandler):
         for (name, value) in self.run_parameters.items():
             if value:
                 os.putenv(name, value)
-
-    def _get_info_string(self):
-        info = "ThunderStreamingContext: \n"
-        info += "  JAR Location: %s\n" % self.jar_name
-        info += "  Spark Location: %s\n" % SPARK_HOME
-        info += "  Thunder-Streaming Location: %s\n" % THUNDER_STREAMING_PATH
-        info += "  Checkpointing Directory: %s\n" % self.run_parameters.get("CHECKPOINT", "")
-        info += "  Master: %s\n" % self.run_parameters.get("MASTER", "")
-        info += "  Batch Time: %s\n" % self.run_parameters.get("BATCH_TIME", "")
-        info += "  Configuration Path: %s\n" % self.run_parameters.get("CONFIG_FILE_PATH", "")
-        info += "  State: %s\n" % self.state
-        return info
 
     def set_master(self, master):
         self.run_parameters['MASTER'] = master
@@ -320,7 +307,7 @@ class ThunderStreamingContext(UpdateHandler):
         build_params(analysis_elem, analysis.get_parameters())
         build_outputs(analysis_elem)
 
-        # Set this TSC as the UpdateHandler for this Analysis instance
+        # Set this TSSC as the UpdateHandler for this Analysis instance
         analysis.set_handler(self)
 
         # Write the configuration to a temporary file and record the name
@@ -451,10 +438,19 @@ class ThunderStreamingContext(UpdateHandler):
         self._reinitialize()
 
     def __repr__(self):
-        return self._get_info_string()
+        return self.__str__()
 
     def __str__(self):
-        return self._get_info_string()
+        info = "ThunderStreamingContext: \n"
+        info += "  JAR Location: %s\n" % self.jar_name
+        info += "  Spark Location: %s\n" % SPARK_HOME
+        info += "  Thunder-Streaming Location: %s\n" % THUNDER_STREAMING_PATH
+        info += "  Checkpointing Directory: %s\n" % self.run_parameters.get("CHECKPOINT", "")
+        info += "  Master: %s\n" % self.run_parameters.get("MASTER", "")
+        info += "  Batch Time: %s\n" % self.run_parameters.get("BATCH_TIME", "")
+        info += "  Configuration Path: %s\n" % self.run_parameters.get("CONFIG_FILE_PATH", "")
+        info += "  State: %s\n" % self.state
+        return info
 
 def in_thunder_streaming():
     """
@@ -561,5 +557,5 @@ def configure_context():
     return ThunderStreamingContext.fromJARFile(jar_opt, jar_file)
 
 # The following should be executed if the script is imported as a module and also if it's launched standalone
-tsc = configure_context()
-print "\nAccess the global ThunderStreamingContext through the 'tsc' object"
+tssc = configure_context()
+print "\nAccess the global ThunderStreamingContext through the 'tssc' object"
