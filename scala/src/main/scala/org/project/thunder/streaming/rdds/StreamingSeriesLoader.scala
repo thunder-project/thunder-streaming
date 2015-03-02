@@ -1,6 +1,7 @@
 package org.project.thunder.streaming.rdds
 
 import org.apache.hadoop.io.{BytesWritable, LongWritable}
+
 import org.apache.spark.streaming.StreamingContext
 
 import org.project.thunder.streaming.util.io.Parser

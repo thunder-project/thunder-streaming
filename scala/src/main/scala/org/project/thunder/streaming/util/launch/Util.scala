@@ -1,7 +1,5 @@
 package org.project.thunder.streaming.util.launch
 
-import scala.xml.{Node, NodeSeq}
-
 object Util {
 
   /**
@@ -16,6 +14,6 @@ object Util {
    */
   def instantiate[T](clazz: java.lang.Class[T])(args:AnyRef*): T = {
     val constructor = clazz.getConstructors()(0)
-    return constructor.newInstance(args:_*).asInstanceOf[T]
+    constructor.newInstance(args:_*).asInstanceOf[T]
   }
 }

@@ -3,11 +3,8 @@ package org.project.thunder.streaming.rdds
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.StreamingContext._
 
-
 import org.project.thunder.streaming.util.counters.StatUpdater
 import org.project.thunder.streaming.util.io.{SeriesWriter, BinaryWriter, TextWriter}
-
-import scala.reflect.ClassTag
 
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   extends StreamingData[Array[Double], StreamingSeries] {

@@ -1,11 +1,10 @@
 package org.project.thunder.streaming.util.launch
 
-import org.project.thunder.streaming.analyses.Analysis
-import org.project.thunder.streaming.outputs.{Output, Output$}
-import org.project.thunder.streaming.util.ThunderStreamingContext
-
 import scala.util.{Failure, Success, Try}
-import scala.xml.{NodeSeq}
+
+import org.project.thunder.streaming.analyses.Analysis
+import org.project.thunder.streaming.outputs.Output
+import org.project.thunder.streaming.util.ThunderStreamingContext
 
 class AnalysisManager(tssc: ThunderStreamingContext, path: String) {
 

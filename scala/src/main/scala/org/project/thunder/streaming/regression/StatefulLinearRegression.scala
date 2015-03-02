@@ -5,13 +5,10 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.dstream.DStream
-
 import org.apache.spark.Logging
+
 import scala.math.sqrt
-import cern.colt.matrix.DoubleFactory2D
-import cern.colt.matrix.DoubleFactory1D
-import cern.colt.matrix.DoubleMatrix2D
-import cern.colt.matrix.DoubleMatrix1D
+import cern.colt.matrix.{DoubleFactory1D, DoubleFactory2D, DoubleMatrix1D, DoubleMatrix2D}
 import cern.jet.math.Functions.{plus, minus, bindArg2, pow}
 import cern.colt.matrix.linalg.Algebra.DEFAULT.{inverse, mult, transpose}
 

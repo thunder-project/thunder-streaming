@@ -1,16 +1,13 @@
 package org.project.thunder.streaming.analyses
 
-import org.apache.spark.streaming.Time
-import org.project.thunder.streaming.analyses.Analysis.OutputListType
-import org.project.thunder.streaming.outputs.{Output, Output$}
-import org.project.thunder.streaming.util.ThunderStreamingContext
-
 import scala.util.{Failure, Success, Try}
 import scala.xml.NodeSeq
 
-/**
- * Created by Andrew on 2/13/15.
- */
+import org.apache.spark.streaming.Time
+
+import org.project.thunder.streaming.analyses.Analysis.OutputListType
+import org.project.thunder.streaming.outputs.Output
+import org.project.thunder.streaming.util.ThunderStreamingContext
 
 object Analysis {
   /*
@@ -46,17 +43,15 @@ object Analysis {
     // Extract all parameters necessary to instantiate an instance of the above output type
     def extractParameters(nodes: NodeSeq): Try[Map[String,String]] =  {
       val paramNodes = nodes \ "param"
-      val paramList = ((paramNodes \\ "@name").map(_.text)).zip((paramNodes \\ "@value").map(_.text)).toList
+      val paramList = (paramNodes \\ "@name").map(_.text).zip((paramNodes \\ "@value").map(_.text)).toList
       Success(Map(paramList: _*))
     }
     // Attempt to invoke the (maybe) AnalysisOutput class' constructor with paramMap as an argument
     // Not using for..yield because I want Failures to propagate out of this method
     extractAndFindClass(nodes) match {
-      case Success(clazz) => {
-        extractParameters(nodes) match {
-          case Success(parameters) => Try(instantiateAnalysis(clazz)(tssc, parameters))
-          case Failure(f) => Failure(f)
-        }
+      case Success(clazz) => extractParameters(nodes) match {
+        case Success(parameters) => Try(instantiateAnalysis(clazz)(tssc, parameters))
+        case Failure(f) => Failure(f)
       }
       case Failure(f) => Failure(f)
     }

@@ -1,11 +1,9 @@
 package org.project.thunder.streaming.outputs
 
 import org.apache.spark.streaming.Time
+
 import org.project.thunder.streaming.util.io.{SeriesWriter, TextWriter, BinaryWriter}
 
-/**
- *
- */
 class SeriesFileOutput(override val params: Map[String, String]) extends Output[List[(Int, Array[Double])]](params) {
 
   override def handleResult(data: List[(Int, Array[Double])], time: Time): Unit = {
@@ -38,8 +36,8 @@ object SeriesFileOutput {
   // Get the writer method based on the keys parameter
   def methodForKeyParam(writer: SeriesWriter, keyParam: String): Option[WriterMethodType] = {
     Map[String, WriterMethodType](
-      ("true", writer.withKeys(_, _, _, _)),
-      ("false" ,writer.withoutKeys(_, _, _, _))
+      ("true", writer.withKeys),
+      ("false" ,writer.withoutKeys)
     ).get(keyParam)
   }
 }

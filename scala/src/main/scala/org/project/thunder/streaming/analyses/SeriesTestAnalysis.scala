@@ -1,13 +1,9 @@
 package org.project.thunder.streaming.analyses
 
-import org.apache.spark.SparkConf
-import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.project.thunder.streaming.analyses.Analysis.OutputListType
 import org.project.thunder.streaming.rdds.StreamingSeries
 import org.project.thunder.streaming.regression.StatefulLinearRegression
 import org.project.thunder.streaming.util.ThunderStreamingContext
-
-import scala.util.{Failure, Success, Try}
 
 abstract class SeriesTestAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends Analysis[Int, Array[Double]] {
 

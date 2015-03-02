@@ -2,6 +2,7 @@ package org.project.thunder.streaming.util.launch
 
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.{Seconds, StreamingContext}
+
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
 object Launcher {

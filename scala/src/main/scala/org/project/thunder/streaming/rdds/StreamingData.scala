@@ -40,7 +40,6 @@ abstract class StreamingData[V: ClassTag, +Self <: StreamingData[V, Self]] {
   /** Output the values and keys by collecting and passing to one or more functions */
   def outputWithKeys(func: List[(List[(Int, V)], Time) => Unit]): Unit = {
     dstream.foreachRDD { (rdd, time) =>
-      // Sort the rdd by index, then collect
       val out = rdd.sortByKey().collect().toList
       func.foreach(f => f(out, time))
     }
@@ -48,20 +47,20 @@ abstract class StreamingData[V: ClassTag, +Self <: StreamingData[V, Self]] {
 
   /** Does a standard filter operation on the underlying DStream and returns a new StreamingData object **/
   def filter(func: ((Int, V)) => Boolean): Self = {
-    val filtered_dstream = dstream.filter(func(_))
-    create(filtered_dstream)
+    val filteredStream = dstream.filter(func)
+    create(filteredStream)
   }
 
   /** Filters the underlying DStream based on a function applied to its values and returns a new StreamingData object **/
   def filterOnValues(func: V => Boolean): Self = {
-    val filtered_dstream = dstream.filter{case (k, v) => func(v)}
-    create(filtered_dstream)
+    val filteredStream = dstream.filter{case (k, v) => func(v)}
+    create(filteredStream)
   }
 
   /** Filters the underlying DStream based on a function applied to its keys and returns a new StreamingData object **/
   def filterOnKeys(func: Int => Boolean): Self = {
-    val filtered_dstream = dstream.filter{case (k, v) => func(k)}
-    create(filtered_dstream)
+    val filteredStream = dstream.filter{case (k, v) => func(k)}
+    create(filteredStream)
   }
 
   /** Print the records (useful for debugging) **/

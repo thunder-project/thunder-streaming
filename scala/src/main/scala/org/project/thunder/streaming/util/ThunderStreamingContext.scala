@@ -1,6 +1,7 @@
 package org.project.thunder.streaming.util
 
 import org.apache.spark.streaming.StreamingContext
+
 import org.project.thunder.streaming.rdds.{StreamingSeries, StreamingSeriesLoader}
 
 class ThunderStreamingContext(ssc: StreamingContext) {
