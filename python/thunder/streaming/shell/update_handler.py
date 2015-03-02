@@ -1,7 +1,5 @@
 from abc import abstractmethod
 
-__author__ = 'osheroffa'
-
 
 class UpdateHandler(object):
     """
