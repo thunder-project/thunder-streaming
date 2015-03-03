@@ -12,15 +12,15 @@ net.virtualvoid.sbt.graph.Plugin.graphSettings
 
 libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "1.0.4"
 
-libraryDependencies += "org.apache.spark" %% "spark-core" % "1.2.0" excludeAll(
+libraryDependencies += "org.apache.spark" %% "spark-core" % "1.2.1" excludeAll(
   ExclusionRule(organization = "org.apache.hadoop")
   )
 
-libraryDependencies += "org.apache.spark" %% "spark-streaming" % "1.2.0" excludeAll(
+libraryDependencies += "org.apache.spark" %% "spark-streaming" % "1.2.1" excludeAll(
   ExclusionRule(organization = "org.apache.hadoop")
   )
 
-libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.2.0" excludeAll(
+libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.2.1" excludeAll(
   ExclusionRule(organization = "org.apache.hadoop")
   )
 
