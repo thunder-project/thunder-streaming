@@ -27,9 +27,11 @@ object ExampleLoadStreaming {
 
     val data = tssc.loadStreamingSeries(dataPath, inputFormat="binary")
 
-    val stats = data.dstream.updateStateByKey(StatUpdater.counter)
+    //val stats = data.dstream.updateStateByKey(StatUpdater.counter)
 
-    stats.checkpoint(Seconds(batchTime * 1000))
+    val stats = data.dstream.reduceByKey{case (v1, v2) => Array(v1(0) + v2(0))}
+
+//    stats.checkpoint(Seconds(batchTime * 1000))
 
     stats.filter{case (k, v) => k < 1000}.print()
 
