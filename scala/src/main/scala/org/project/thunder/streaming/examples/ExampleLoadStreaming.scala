@@ -14,7 +14,7 @@ object ExampleLoadStreaming {
     val batchTime = args(1).toLong
 
     val conf = new SparkConf()
-      .setJars(List("target/scala-2.10/thunder_2.10-0.1.0_dev.jar"))
+      .setJars(List("target/scala-2.10/thunder-streaming_2.10-0.1.0_dev.jar"))
       .set("spark.executor.memory", "100G")
       .set("spark.default.parallelism", "100")
       .setAppName("ExampleLoadStreaming")
