@@ -15,11 +15,11 @@ object ExampleLoadStreaming {
 
     val batchTime = args(1).toLong
 
-    val conf = new SparkConf().setAppName("ExampleLoadStreaming").set("spark.default.parallelism", "100")
+    val conf = new SparkConf().setAppName("ExampleLoadStreaming").set("spark.default.parallelism", "320")
 
     val ssc = new StreamingContext(conf, Seconds(batchTime))
 
-    ssc.sparkContext.hadoopConfiguration.setLong("fs.local.block.size", 2 * 1024 * 1024)
+    ssc.sparkContext.hadoopConfiguration.setLong("fs.local.block.size", 1 * 1024 * 1024)
 
     val tssc = new ThunderStreamingContext(ssc)
 
@@ -27,7 +27,7 @@ object ExampleLoadStreaming {
 
     val stats = data.dstream.updateStateByKey{StatUpdater.counter}
 
-    stats.print()
+    stats.count().print()
 
 //    means.dstream.foreachRDD { rdd =>
 //      val foo = rdd.filter{case (k, v) => k < 1000}.collect()
