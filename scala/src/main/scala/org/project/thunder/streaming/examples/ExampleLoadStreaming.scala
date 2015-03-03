@@ -3,6 +3,7 @@ package org.project.thunder.streaming.examples
 import org.apache.hadoop.io.{BytesWritable, LongWritable}
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming._
+import org.project.thunder.streaming.util.io.Parser
 import org.project.thunder.streaming.util.io.hadoop.FixedLengthBinaryInputFormat
 
 object ExampleLoadStreaming {
@@ -21,9 +22,15 @@ object ExampleLoadStreaming {
 
     val ssc = new StreamingContext(conf, Seconds(batchTime))
 
-    val data = ssc.fileStream[LongWritable, BytesWritable, FixedLengthBinaryInputFormat](dataPath)
+    val parser = new Parser("short")
+    
+    val lines = ssc.fileStream[LongWritable, BytesWritable, FixedLengthBinaryInputFormat](dataPath)
 
-    data.count().print()
+    val dstream = lines
+      .map{ case (k, v) => (k.get().toInt, v.getBytes)}
+      .map{ case (k, v) => (k, parser.get(v))}
+
+    dstream.count().print()
 
     ssc.start()
     ssc.awaitTermination()
