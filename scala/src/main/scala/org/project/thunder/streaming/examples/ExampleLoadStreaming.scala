@@ -26,11 +26,9 @@ object ExampleLoadStreaming {
 
     val lines = ssc.fileStream[LongWritable, BytesWritable, FixedLengthBinaryInputFormat](dataPath)
 
-    //val dstream = lines
-    //  .map{ case (k, v) => (k.get().toInt, v.getBytes)}
-    //  .map{ case (k, v) => (k, parser.get(v))}
+    val dstream = lines.map{ case (k, v) => (k.get().toInt, parser.get(v.getBytes))}
 
-    lines.count().print()
+    dstream.count().print()
 
     ssc.start()
     ssc.awaitTermination()
