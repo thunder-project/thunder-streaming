@@ -15,11 +15,9 @@ object ExampleLoadStreaming {
 
     val conf = new SparkConf().setAppName("ExampleLoadStreaming").set("spark.default.parallelism", "100")
 
-    System.setProperty("mapred.max.split.size", "16mb")
-
     val ssc = new StreamingContext(conf, Seconds(batchTime))
 
-    ssc.sparkContext.hadoopConfiguration.setLong("fs.local.block.size", 8 * 1024 * 1024)
+    ssc.sparkContext.hadoopConfiguration.setLong("mapreduce.input.fileinputformat.split.minsize", 8 * 1024 * 1024)
 
     val tssc = new ThunderStreamingContext(ssc)
 
