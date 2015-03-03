@@ -1,6 +1,7 @@
 package org.project.thunder.streaming.examples
 
 import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext._
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
 
@@ -27,17 +28,18 @@ object ExampleLoadStreaming {
 
     val data = tssc.loadStreamingSeries(dataPath, inputFormat="binary")
 
+    val stats = data.seriesMean()
     //val stats = data.dstream.updateStateByKey(StatUpdater.counter)
 
-    val stats = data.dstream.reduceByKey{case (v1, v2) => Array(v1(0) + v2(0))}
+    //val stats = data.dstream.reduceByKey{case (v1, v2) => Array(v1(0) + v2(0))}
 
-//    stats.checkpoint(Seconds(batchTime * 1000))
+    stats.dstream.checkpoint(Seconds(batchTime * 1000))
 
-    stats.filter{case (k, v) => k < 1000}.print()
+    stats.filter{case (k, v) => k < 100}.print()
 
-//    means.dstream.foreachRDD { rdd =>
-//      val foo = rdd.filter{case (k, v) => k < 1000}.collect()
-//    }
+    stats.dstream.foreachRDD{ rdd =>
+      val out = rdd.sortByKey().filter{case (k, v) => k < 100}
+    }
 
     ssc.start()
     ssc.awaitTermination()
