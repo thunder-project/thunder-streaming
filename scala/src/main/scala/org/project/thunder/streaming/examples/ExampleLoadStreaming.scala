@@ -22,7 +22,7 @@ object ExampleLoadStreaming {
     val data = tssc.loadStreamingSeries(dataPath, inputFormat="binary")
 
     data.dstream.foreachRDD { rdd =>
-      val foo = rdd.count()
+      val foo = rdd.filter{case (k, v) => k < 100}.collect()
     }
 
     ssc.start()
