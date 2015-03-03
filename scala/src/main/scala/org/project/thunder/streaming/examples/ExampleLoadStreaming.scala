@@ -31,7 +31,7 @@ object ExampleLoadStreaming {
 
     stats.checkpoint(Seconds(100))
 
-    stats.count().print()
+    stats.filter{case (k, v) => k < 1000}.print()
 
 //    means.dstream.foreachRDD { rdd =>
 //      val foo = rdd.filter{case (k, v) => k < 1000}.collect()
