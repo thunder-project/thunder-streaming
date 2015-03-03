@@ -15,14 +15,18 @@ object ExampleLoadStreaming {
 
     val conf = new SparkConf().setAppName("ExampleLoadStreaming").set("spark.default.parallelism", "100")
 
+    System.setProperty("mapred.max.split.size", "16mb")
+
     val ssc = new StreamingContext(conf, Seconds(batchTime))
+
+    ssc.sparkContext.hadoopConfiguration.setLong("fs.local.block.size", 8)
 
     val tssc = new ThunderStreamingContext(ssc)
 
     val data = tssc.loadStreamingSeries(dataPath, inputFormat="binary")
 
     data.dstream.foreachRDD { rdd =>
-      val foo = rdd.filter{case (k, v) => k < 100}.collect()
+      val foo = rdd.filter{case (k, v) => k < 1000}.collect()
     }
 
     ssc.start()
