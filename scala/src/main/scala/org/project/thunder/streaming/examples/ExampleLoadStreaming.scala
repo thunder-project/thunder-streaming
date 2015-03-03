@@ -19,7 +19,7 @@ object ExampleLoadStreaming {
 
     val ssc = new StreamingContext(conf, Seconds(batchTime))
 
-    ssc.sparkContext.hadoopConfiguration.setLong("fs.local.block.size", 8)
+    ssc.sparkContext.hadoopConfiguration.setLong("fs.local.block.size", 8 * 1024 * 1024)
 
     val tssc = new ThunderStreamingContext(ssc)
 
