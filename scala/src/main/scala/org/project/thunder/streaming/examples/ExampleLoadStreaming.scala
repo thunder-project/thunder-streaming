@@ -23,7 +23,9 @@ object ExampleLoadStreaming {
 
     val data = tssc.loadStreamingSeries(dataPath, inputFormat="binary")
 
-    data.dstream.foreachRDD { rdd =>
+    val means = data.seriesMean()
+
+    means.dstream.foreachRDD { rdd =>
       val foo = rdd.filter{case (k, v) => k < 1000}.collect()
     }
 
