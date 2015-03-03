@@ -25,9 +25,9 @@ object ExampleLoadStreaming {
 
     val data = tssc.loadStreamingSeries(dataPath, inputFormat="binary")
 
-    //val stats = data.dstream.updateStateByKey{StatUpdater.counter}
+    val stats = data.dstream.updateStateByKey{StatUpdater.counter}
 
-    data.dstream.count().print()
+    stats.count().print()
 
 //    means.dstream.foreachRDD { rdd =>
 //      val foo = rdd.filter{case (k, v) => k < 1000}.collect()
