@@ -21,7 +21,7 @@ object ExampleLoadStreaming {
 
     ssc.sparkContext.hadoopConfiguration.setLong("fs.local.block.size", 1 * 1024 * 1024)
 
-    ssc.checkpoint("/tier/freeman/checkpoint")
+    ssc.checkpoint("/tier2/freeman/checkpoint")
 
     val tssc = new ThunderStreamingContext(ssc)
 
