@@ -16,7 +16,7 @@ libraryDependencies += "org.apache.spark" %% "spark-streaming" % "1.2.1"
 
 libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.2.1"
 
-libraryDependencies += "colt" % "colt" % "1.2.1"
+libraryDependencies += "colt" % "colt" % "1.2.0"
 
 libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0" % "test"
 
