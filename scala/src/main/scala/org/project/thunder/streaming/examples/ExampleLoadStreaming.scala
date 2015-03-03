@@ -27,9 +27,9 @@ object ExampleLoadStreaming {
 
     val data = tssc.loadStreamingSeries(dataPath, inputFormat="binary")
 
-    data.dstream.checkpoint(Seconds(100))
-
     val stats = data.dstream.updateStateByKey(StatUpdater.counter)
+
+    stats.checkpoint(Seconds(100))
 
     stats.count().print()
 
