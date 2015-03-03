@@ -9,13 +9,11 @@ object ExampleLoadStreaming {
 
   def main(args: Array[String]) {
 
-    val master = args(0)
+    val dataPath = args(0)
 
-    val dataPath = args(1)
+    val batchTime = args(1).toLong
 
-    val batchTime = args(2).toLong
-
-    val conf = new SparkConf().setMaster(master).setAppName("ExampleLoadStreaming")
+    val conf = new SparkConf().setAppName("ExampleLoadStreaming").set("spark.default.parallelism", "100")
 
     val ssc = new StreamingContext(conf, Seconds(batchTime))
 
