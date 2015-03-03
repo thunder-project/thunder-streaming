@@ -23,7 +23,7 @@ object ExampleLoadStreaming {
     val ssc = new StreamingContext(conf, Seconds(batchTime))
 
     val parser = new Parser("short")
-    
+
     val lines = ssc.fileStream[LongWritable, BytesWritable, FixedLengthBinaryInputFormat](dataPath)
 
     val dstream = lines
