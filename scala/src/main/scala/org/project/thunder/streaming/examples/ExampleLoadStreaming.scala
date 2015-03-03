@@ -25,7 +25,7 @@ object ExampleLoadStreaming {
 
     val data = tssc.loadStreamingSeries(dataPath, inputFormat="binary")
 
-    val stats = data.dstream.updateStateByKey{StatUpdater.counter}
+    val stats = data.dstream.reduceByKey{case (v1, v2) => Array(v1(0) + v2(0))}
 
     stats.count().print()
 
