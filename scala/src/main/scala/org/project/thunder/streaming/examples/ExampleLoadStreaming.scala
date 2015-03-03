@@ -29,7 +29,7 @@ object ExampleLoadStreaming {
 
     val stats = data.dstream.updateStateByKey(StatUpdater.counter)
 
-    stats.checkpoint(Seconds(100))
+    stats.checkpoint(Seconds(batchTime * 1000))
 
     stats.filter{case (k, v) => k < 1000}.print()
 
