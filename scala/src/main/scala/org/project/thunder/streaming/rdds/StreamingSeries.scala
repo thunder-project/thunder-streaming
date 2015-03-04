@@ -5,7 +5,7 @@ import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.StreamingContext._
 
 import org.project.thunder.streaming.util.counters.StatUpdater
-import org.project.thunder.streaming.util.io.BinaryWriter
+import org.project.thunder.streaming.util.io.TextWriter
 
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   extends StreamingData[Array[Double], StreamingSeries] {
@@ -28,7 +28,7 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
 
   /** Save to output files */
   def save(directory: String, prefix: String): Unit = {
-    val writer = new BinaryWriter(directory, prefix)
+    val writer = new TextWriter(directory, prefix)
     dstream.foreachRDD{ (rdd, time) =>
       println(rdd.count())
       rdd.foreachPartition(part => writer.withKeys(part, time))
