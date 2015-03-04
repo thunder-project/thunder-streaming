@@ -34,7 +34,7 @@ object Launcher {
 
     // TODO launch/start the analyses
     val runSpec = new AnalysisManager(tssc, filePath)
-    runSpec.register()
+    runSpec.load(tssc, filePath).foreach(a => a.process())
 
     ssc.start()
     ssc.awaitTermination()
