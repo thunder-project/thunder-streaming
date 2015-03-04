@@ -1,22 +1,19 @@
 package org.project.thunder.streaming.analyses
 
-import org.project.thunder.streaming.analyses.Analysis.OutputListType
 import org.project.thunder.streaming.rdds.StreamingSeries
 import org.project.thunder.streaming.regression.StatefulLinearRegression
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
-abstract class SeriesTestAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends Analysis[Int, Array[Double]] {
+abstract class SeriesTestAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+  extends Analysis[StreamingSeries](tssc, params) {
 
-  def getSeries(): StreamingSeries = {
-    val dataPath = params.getOrElse(SeriesTestAnalysis.DATA_PATH_KEY, "series_data")
-    tssc.loadStreamingSeries(dataPath, inputFormat = params.getOrElse(SeriesTestAnalysis.FORMAT_KEY, ""))
+  def load(path: String): StreamingSeries = {
+    val format = params.getOrElse(SeriesTestAnalysis.FORMAT_KEY, "binary")
+    tssc.loadStreamingSeries(path, inputFormat = format)
   }
 
-  def register(outputs: OutputListType): Unit = {
-    val data = getSeries()
-    val outputFuncs = getOutputFunctions(outputs)
-    val analyzedData  = analyze(data)
-    analyzedData.outputWithKeys(outputFuncs)
+  def run(data: StreamingSeries): StreamingSeries = {
+    analyze(data)
   }
 
   def analyze(data: StreamingSeries): StreamingSeries

@@ -21,7 +21,7 @@ object Analysis {
    */
 
   final val OUTPUT = "output"
-  final val INPUT = "intput"
+  final val INPUT = "input"
   final val PREFIX = "prefix"
 
   class BadAnalysisConfigException(msg: String) extends RuntimeException(msg)
@@ -65,13 +65,17 @@ object Analysis {
 }
 
 abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext, params: Map[String, String]) {
+
   def getParam(key: String): String = params.getOrElse(key, "")
+
   def process(): Unit = {
     val data = load(getParam(Analysis.INPUT))
     val out = run(data)
     out.save(getParam(Analysis.OUTPUT), getParam(Analysis.PREFIX))
   }
+
   def load(path: String): T
+
   def run(data: T): T
 }
 
