@@ -8,32 +8,23 @@ import org.project.thunder.streaming.util.ThunderStreamingContext
 
 class AnalysisManager(tssc: ThunderStreamingContext, path: String) {
 
-  type AnalysesList = List[(Try[Analysis[_, _]], List[Try[Output[_ <: List[_]]]])]
+  val analyses: List[Analysis[_]] = load(tssc, path)
 
-  val analyses: AnalysesList = load(tssc, path)
-
-  def load(tssc: ThunderStreamingContext, path: String): AnalysesList = {
+  def load(tssc: ThunderStreamingContext, path: String): List[Analysis[_]] = {
     val root = scala.xml.XML.loadFile(path)
 
     // For each <analysis> child of the root, generate an Analysis object (and its associated AnalysisOutputs) to generate
     // the list of analyses
-    (root \\ "analysis").foldLeft(List().asInstanceOf[AnalysesList]) {
+    (root \\ "analysis").foldLeft(List().asInstanceOf[List[Analysis[_]]]) {
       (analysisList, node) => {
-        Pair(Analysis.instantiateFromConf(tssc, node), Output.instantiateFromConf(node)) :: analysisList
-      }
-    }
-  }
-
-  def register() : Unit = {
-    analyses.foreach {
-      analysisPair => analysisPair match {
-        case (Success(analysis), maybeOutputs) => {
-          // We will lazily wait until the analysis is executed before throwing any exceptions
-          analysis.register(maybeOutputs)
+        val maybeAnalysis = Analysis.instantiateFromConf(tssc, node)
+        maybeAnalysis match {
+          case Success(analysis) => analysis :: analysisList
+          case Failure(f) => {
+            println(f)
+            analysisList
+          }
         }
-        // For now, just print the thrown exceptions if there were errors
-        // Also, is there a better way of dealing with Pairs?
-        case Pair(Failure(f1), _) => println(f1)
       }
     }
   }
