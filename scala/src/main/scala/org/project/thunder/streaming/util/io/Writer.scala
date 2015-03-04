@@ -23,16 +23,12 @@ abstract class Writer[V](directory: String, prefix: String) extends Serializable
   }
 
   def withoutKeys(part: Iterator[(Int, V)], time: Time, id: Int) {
-    if (part.length > 0) {
-      val f = seriesFile(time, id)
-      write(part, f)
-    }
+    val f = seriesFile(time, id)
+    write(part, f)
   }
 
   def withKeys(part: Iterator[(Int, V)], time: Time, id: Int) {
-    if (part.length > 0) {
-      val f = seriesFile(time, id)
-      write(part, f, withKeys=true)
-    }
+    val f = seriesFile(time, id)
+    write(part, f, withKeys=true)
   }
 }
