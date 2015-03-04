@@ -10,7 +10,7 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   extends StreamingData[Array[Double], StreamingSeries] {
 
   /** Compute a running estate of several statistics */
-  def seriesStat(): StreamingSeries = {
+  def seriesStats(): StreamingSeries = {
     val stats = dstream.updateStateByKey{StatUpdater.counter}
     val output = stats.mapValues(x => Array(x.count, x.mean, x.stdev, x.max, x.min))
     create(output)
@@ -24,8 +24,8 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   }
 
   /** Save to output files */
-  def save(directory: String, filename: String) {
-    val writer = new BinaryWriter(directory, filename)
+  def save(directory: String, prefix: String) {
+    val writer = new BinaryWriter(directory, prefix)
     dstream.foreachRDD{ (rdd, time) =>
       rdd.foreachPartition(part => writer.withKeys(part, time))
     }

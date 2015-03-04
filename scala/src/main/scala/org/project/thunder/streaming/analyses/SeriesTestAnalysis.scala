@@ -45,14 +45,14 @@ class SeriesNoopAnalysis(tssc: ThunderStreamingContext, params: Map[String, Stri
 class SeriesStatsAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
     extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
-    data.seriesStat()
+    data.seriesStats()
   }
 }
 
 class SeriesCountingAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
     extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
-    val stats = data.seriesStat()
+    val stats = data.seriesStats()
     val counts = stats.applyValues(arr => Array(arr(0)))
     counts
   }
@@ -62,7 +62,7 @@ class SeriesCombinedAnalysis(tssc: ThunderStreamingContext, params: Map[String, 
     extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     val means = data.seriesMean()
-    val stats = data.seriesStat()
+    val stats = data.seriesStats()
     val secondMeans = data.seriesMean()
     new StreamingSeries(secondMeans.dstream.union(means.dstream.union(stats.dstream)))
   }
