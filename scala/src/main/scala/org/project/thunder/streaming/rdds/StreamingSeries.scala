@@ -30,7 +30,6 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   /** Save to output files */
   def save(directory: String, prefix: String): Unit = {
     val writer = new TextWriter(directory, prefix)
-    dstream.print()
     dstream.foreachRDD{ (rdd, time) =>
       val writeShard = (context: TaskContext, part: Iterator[(Int, Array[Double])]) => {
         writer.withKeys(part, time, context.partitionId)
