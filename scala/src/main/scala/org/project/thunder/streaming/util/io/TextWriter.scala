@@ -4,8 +4,8 @@ import java.io.{BufferedWriter, FileWriter, File}
 
 /*** Class for writing an RDD partition to a text file */
 
-class TextWriter(directory: String, filename: String)
-  extends Writer[Array[Double]](directory, filename) with Serializable {
+class TextWriter(directory: String, prefix: String)
+  extends Writer[Array[Double]](directory, prefix) with Serializable {
 
   def extension = ".txt"
 

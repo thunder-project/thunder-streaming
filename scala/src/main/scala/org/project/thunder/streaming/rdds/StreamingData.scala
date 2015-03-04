@@ -45,7 +45,7 @@ abstract class StreamingData[V: ClassTag, +Self <: StreamingData[V, Self]] exten
   }
 
   /** Save streaming data */
-  def save(directory: String, filename: String): Unit
+  def save(directory: String, prefix: String): Unit
 
   /** Print the records (useful for debugging) **/
   def print()

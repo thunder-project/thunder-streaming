@@ -11,14 +11,14 @@ import org.apache.spark.streaming.Time
  * to a particular output type (see e.g. TextWriter, BinaryWriter).
  *
  */
-abstract class Writer[V](directory: String, fileName: String) {
+abstract class Writer[V](directory: String, prefix: String) {
 
   def write(rdd: Iterator[(Int, V)], file: File, withKeys: Boolean = false): Unit
 
   def extension: String
 
   private def seriesFile(time: Time): File = {
-    new File(directory ++ File.separator ++ fileName ++ "-" ++ time.toString.split(" ")(0) ++ extension)
+    new File(directory ++ File.separator ++ prefix ++ "-" ++ time.toString.split(" ")(0) ++ extension)
   }
 
   def withoutKeys(rdd: Iterator[(Int, V)], time: Time) {
