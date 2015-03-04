@@ -9,10 +9,10 @@ class TextWriter(directory: String, prefix: String)
 
   def extension = ".txt"
 
-  def write(rdd: Iterator[(Int, Array[Double])], file: File, withIndices: Boolean = true) = {
+  def write(part: Iterator[(Int, Array[Double])], file: File, withIndices: Boolean = true) = {
     printToFile(file)(bw => {
       // Write out the index if it exists
-      rdd.foreach(item => {
+      part.foreach(item => {
         if (withIndices) {
           bw.write("%d".format(item._1))
         }
