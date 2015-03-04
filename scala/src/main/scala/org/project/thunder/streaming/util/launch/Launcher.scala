@@ -27,6 +27,9 @@ object Launcher {
 
     val ssc = new StreamingContext(conf, Seconds(batchTime))
 
+    ssc.sparkContext.hadoopConfiguration.setLong("fs.local.block.size",
+      System.getenv("HADOOP_BLOCK_SIZE").toInt * 1024 * 1024)
+
     val tssc = new ThunderStreamingContext(ssc)
 
     // TODO launch/start the analyses

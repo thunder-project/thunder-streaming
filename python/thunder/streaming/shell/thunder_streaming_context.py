@@ -79,7 +79,8 @@ class ThunderStreamingContext(UpdateHandler):
             # TODO FOR TESTING ONLY
             'PARALLELISM': '100',
             'EXECUTOR_MEMORY': '100G',
-
+            'CHECKPOINT_INTERVAL': '10000',
+            'HADOOP_BLOCK_SIZE': '1'
         }
 
         # Gracefully handle SIGINT and SIGTERM signals
@@ -122,6 +123,18 @@ class ThunderStreamingContext(UpdateHandler):
 
     def set_checkpoint_dir(self, cp_dir):
         self.run_parameters['CHECKPOINT'] = cp_dir
+        self._update_env()
+
+    def set_hadoop_block_size(self, block_size):
+        self.run_parameters['HADOOP_BLOCK_SIZE'] = block_size
+        self._update_env()
+
+    def set_default_parallelism(self, def_p):
+        self.run_parameters['PARALLELISM'] = def_p
+        self._update_env()
+
+    def set_checkpoint_interval(self, interval):
+        self.run_parameters['CHECKPOINT_INTERVAL'] = interval
         self._update_env()
 
     def set_feeder_conf(self, feeder_conf):

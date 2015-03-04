@@ -1,5 +1,6 @@
 package org.project.thunder.streaming.rdds
 
+import org.apache.spark.streaming.Seconds
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.StreamingContext._
 
@@ -13,6 +14,7 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   /** Compute a running estate of several statistics */
   def seriesStat(): StreamingSeries = {
     val stats = dstream.updateStateByKey{StatUpdater.counter}
+    stats.checkpoint(Seconds(System.getenv("CHECKPOINT_INTERVAL").toInt))
     val output = stats.mapValues(x => Array(x.count, x.mean, x.stdev, x.max, x.min))
     create(output)
   }
@@ -20,6 +22,7 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   /** Compute a running estimate of the mean */
   def seriesMean(): StreamingSeries = {
     val stats = dstream.updateStateByKey{StatUpdater.counter}
+    stats.checkpoint(Seconds(System.getenv("CHECKPOINT_INTERVAL").toInt))
     val output = stats.mapValues(x => Array(x.mean))
     create(output)
   }
