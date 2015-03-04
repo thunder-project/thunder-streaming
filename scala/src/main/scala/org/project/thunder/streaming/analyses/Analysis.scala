@@ -21,7 +21,7 @@ object Analysis {
    */
 
   final val OUTPUT = "output"
-  final val INPUT = "intput"
+  final val INPUT = "input"
   final val PREFIX = "prefix"
 
   class BadAnalysisConfigException(msg: String) extends RuntimeException(msg)
