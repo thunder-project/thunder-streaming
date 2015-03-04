@@ -28,25 +28,29 @@ object SeriesTestAnalysis {
   final val FORMAT_KEY = "format"
 }
 
-class SeriesMeanAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesMeanAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     data.seriesMean()
   }
 }
 
-class SeriesNoopAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesNoopAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     data
   }
 }
 
-class SeriesStatsAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesStatsAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     data.seriesStat()
   }
 }
 
-class SeriesCountingAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesCountingAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     val stats = data.seriesStat()
     val counts = stats.applyValues(arr => Array(arr(0)))
@@ -54,7 +58,8 @@ class SeriesCountingAnalysis(tssc: ThunderStreamingContext, params: Map[String, 
   }
 }
 
-class SeriesCombinedAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesCombinedAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     val means = data.seriesMean()
     val stats = data.seriesStat()
@@ -63,7 +68,8 @@ class SeriesCombinedAnalysis(tssc: ThunderStreamingContext, params: Map[String, 
   }
 }
 
-class SeriesRegressionAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesRegressionAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     val slr = new StatefulLinearRegression()
     val fittedStream = slr.runStreaming(data.dstream)
