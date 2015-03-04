@@ -11,7 +11,7 @@ import org.apache.spark.streaming.Time
  * to a particular output type (see e.g. TextWriter, BinaryWriter).
  *
  */
-abstract class Writer[V](directory: String, prefix: String) {
+abstract class Writer[V](directory: String, prefix: String) extends Serializable {
 
   def write(rdd: Iterator[(Int, V)], file: File, withKeys: Boolean = false): Unit
 
