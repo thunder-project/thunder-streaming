@@ -11,16 +11,16 @@ class BinaryWriter(directory: String, prefix: String)
 
   def extension = ".bin"
 
-  def write(part: Iterator[(Int, Array[Double])], file: File, withIndices: Boolean = true): Unit = {
+  def write(part: Iterator[(Int, Array[Double])], file: File, withKeys: Boolean = true): Unit = {
     val fos = new FileOutputStream(file)
     val channel = fos.getChannel
     part.foreach(item => {
       val index = item._1
       val arr = item._2
-      val bufSize = if (withIndices) 4 + 8 * arr.length else 8 * arr.length
+      val bufSize = if (withKeys) 4 + 8 * arr.length else 8 * arr.length
       val bbuf: ByteBuffer = ByteBuffer.allocate(bufSize)
       bbuf.order(ByteOrder.LITTLE_ENDIAN)
-      if (withIndices) {
+      if (withKeys) {
         bbuf.putInt(index)
       }
       arr.foreach(bbuf.putDouble)

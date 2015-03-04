@@ -9,11 +9,11 @@ class TextWriter(directory: String, prefix: String)
 
   def extension = ".txt"
 
-  def write(part: Iterator[(Int, Array[Double])], file: File, withIndices: Boolean = true) = {
+  def write(part: Iterator[(Int, Array[Double])], file: File, withKeys: Boolean = true) = {
     printToFile(file)(bw => {
       // Write out the index if it exists
       part.foreach(item => {
-        if (withIndices) {
+        if (withKeys) {
           bw.write("%d".format(item._1))
         }
         item._2.foreach(x => bw.write(" %.6f".format(x)))
