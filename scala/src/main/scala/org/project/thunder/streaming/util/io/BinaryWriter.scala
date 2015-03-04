@@ -7,7 +7,7 @@ import java.nio.{ByteOrder, ByteBuffer}
 /*** Class for writing an RDD partition to a flat binary file */
 
 class BinaryWriter(directory: String, prefix: String)
-  extends Writer[Array[Double]](directory, prefix) with Serializable {
+  extends Writer[Array[Double]](directory, prefix) {
 
   def extension = ".bin"
 
