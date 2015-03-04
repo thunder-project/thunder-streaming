@@ -8,7 +8,8 @@ abstract class SeriesTestAnalysis(tssc: ThunderStreamingContext, params: Map[Str
   extends Analysis[StreamingSeries](tssc, params) {
 
   def load(path: String): StreamingSeries = {
-    tssc.loadStreamingSeries(path, inputFormat = params.getOrElse(SeriesTestAnalysis.FORMAT_KEY, ""))
+    val format = params.getOrElse(SeriesTestAnalysis.FORMAT_KEY, "binary")
+    tssc.loadStreamingSeries(path, inputFormat = format)
   }
 
   def run(data: StreamingSeries): StreamingSeries = {
