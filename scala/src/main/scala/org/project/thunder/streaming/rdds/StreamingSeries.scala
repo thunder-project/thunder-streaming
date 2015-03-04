@@ -30,6 +30,7 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   def save(directory: String, prefix: String): Unit = {
     val writer = new BinaryWriter(directory, prefix)
     dstream.foreachRDD{ (rdd, time) =>
+      println(rdd.count())
       rdd.foreachPartition(part => writer.withKeys(part, time))
     }
   }
