@@ -66,6 +66,8 @@ object Analysis {
 
 abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext, params: Map[String, String]) {
 
+  println("params: %s".format(params.toString()))
+
   def getParam(key: String): String = params.getOrElse(key, "")
 
   def process(): Unit = {
