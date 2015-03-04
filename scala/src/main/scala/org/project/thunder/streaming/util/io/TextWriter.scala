@@ -2,7 +2,7 @@ package org.project.thunder.streaming.util.io
 
 import java.io.{BufferedWriter, FileWriter, File}
 
-/*** Class for writing an RDD to a text file */
+/*** Class for writing an RDD partition to a text file */
 
 class TextWriter(directory: String, filename: String)
   extends Writer[Array[Double]](directory, filename) with Serializable {

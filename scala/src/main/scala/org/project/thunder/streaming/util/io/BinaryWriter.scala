@@ -4,7 +4,7 @@ import java.io.{File, FileOutputStream}
 import java.nio.{ByteOrder, ByteBuffer}
 
 
-/*** Class for writing an RDD to a flat binary file */
+/*** Class for writing an RDD partition to a flat binary file */
 
 class BinaryWriter(prefix: String, suffix: String)
   extends Writer[Array[Double]](prefix, suffix) with Serializable {
