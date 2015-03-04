@@ -28,48 +28,54 @@ object SeriesTestAnalysis {
   final val FORMAT_KEY = "format"
 }
 
-class SeriesMeanAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesMeanAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     data.seriesMean()
   }
 }
 
-class SeriesNoopAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesNoopAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     data
   }
 }
 
-class SeriesStatsAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesStatsAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
-    data.seriesStat()
+    data.seriesStats()
   }
 }
 
-class SeriesCountingAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
+class SeriesCountingAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
-    val stats = data.seriesStat()
+    val stats = data.seriesStats()
     val counts = stats.applyValues(arr => Array(arr(0)))
     counts
   }
 }
 
-class SeriesCombinedAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
-    def analyze(data: StreamingSeries): StreamingSeries = {
-      val means = data.seriesMean()
-      val stats = data.seriesStat()
-      val secondMeans = data.seriesMean()
-      new StreamingSeries(secondMeans.dstream.union(means.dstream.union(stats.dstream)))
-    }
+class SeriesCombinedAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
+  def analyze(data: StreamingSeries): StreamingSeries = {
+    val means = data.seriesMean()
+    val stats = data.seriesStats()
+    val secondMeans = data.seriesMean()
+    new StreamingSeries(secondMeans.dstream.union(means.dstream.union(stats.dstream)))
+  }
 }
 
-class SeriesRegressionAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
-      def analyze(data: StreamingSeries): StreamingSeries = {
-        val slr = new StatefulLinearRegression()
-        val fittedStream = slr.runStreaming(data.dstream)
-        val weightsStream = fittedStream.map{case (key, model) => (key, model.weights)}
-        new StreamingSeries(weightsStream)
-      }
+class SeriesRegressionAnalysis(tssc: ThunderStreamingContext, params: Map[String, String])
+    extends SeriesTestAnalysis(tssc, params) {
+  def analyze(data: StreamingSeries): StreamingSeries = {
+    val slr = new StatefulLinearRegression()
+    val fittedStream = slr.runStreaming(data.dstream)
+    val weightsStream = fittedStream.map{case (key, model) => (key, model.weights)}
+    new StreamingSeries(weightsStream)
+  }
 }
 
 

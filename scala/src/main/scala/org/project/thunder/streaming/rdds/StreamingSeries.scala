@@ -5,14 +5,13 @@ import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.StreamingContext._
 
 import org.project.thunder.streaming.util.counters.StatUpdater
-import org.project.thunder.streaming.util.io.{SeriesWriter, BinaryWriter, TextWriter}
+import org.project.thunder.streaming.util.io.BinaryWriter
 
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   extends StreamingData[Array[Double], StreamingSeries] {
 
-
   /** Compute a running estate of several statistics */
-  def seriesStat(): StreamingSeries = {
+  def seriesStats(): StreamingSeries = {
     val stats = dstream.updateStateByKey{StatUpdater.counter}
     stats.checkpoint(Seconds(System.getenv("CHECKPOINT_INTERVAL").toInt))
     val output = stats.mapValues(x => Array(x.count, x.mean, x.stdev, x.max, x.min))
@@ -27,21 +26,12 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
     create(output)
   }
 
-  private def save(writer: SeriesWriter, directory: String, prefix: String): Unit = {
-    dstream.foreachRDD((rdd, time) => {
-      val data = rdd.collect()
-      writer.withKeys(data.toList, time, directory, prefix)
-    })
-  }
-
-  /** Save data from each batch as binary files */
-  def saveAsBinary(directory: String, prefix: String) = {
-    save(new BinaryWriter(), directory, prefix)
-  }
-
-  /** Save data from each batch as text files */
-  def saveAsText(directory: String, prefix: String) = {
-    save(new TextWriter(), directory, prefix)
+  /** Save to output files */
+  def save(directory: String, prefix: String) {
+    val writer = new BinaryWriter(directory, prefix)
+    dstream.foreachRDD{ (rdd, time) =>
+      rdd.foreachPartition(part => writer.withKeys(part, time))
+    }
   }
 
   /** Print keys and values */
@@ -49,5 +39,6 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
     dstream.map { case (k, v) => "(" + k.toString + ") " + " (" + v.mkString(",") + ")"}.print()
   }
 
-  override protected def create(dstream: DStream[(Int, Array[Double])]): StreamingSeries = new StreamingSeries(dstream)
+  override protected def create(dstream: DStream[(Int, Array[Double])]):
+    StreamingSeries = new StreamingSeries(dstream)
 }

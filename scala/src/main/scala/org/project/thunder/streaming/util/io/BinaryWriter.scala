@@ -3,25 +3,27 @@ package org.project.thunder.streaming.util.io
 import java.io.{File, FileOutputStream}
 import java.nio.{ByteOrder, ByteBuffer}
 
-/*** Class for writing an RDD to a flat binary file */
 
-class BinaryWriter extends SeriesWriter with Serializable {
+/*** Class for writing an RDD partition to a flat binary file */
 
-  override def extension = ".bin"
+class BinaryWriter(directory: String, prefix: String)
+  extends Writer[Array[Double]](directory, prefix) with Serializable {
 
-  override def write(data: List[(Int, Array[Double])], file: File, withIndices: Boolean = true): Unit = {
+  def extension = ".bin"
+
+  def write(rdd: Iterator[(Int, Array[Double])], file: File, withIndices: Boolean = true): Unit = {
     val fos = new FileOutputStream(file)
     val channel = fos.getChannel
-    data.foreach(item => {
+    rdd.foreach(item => {
       val index = item._1
       val arr = item._2
-      val bufSize = if (withIndices) (4 + 8 * arr.length) else 8 * arr.length
+      val bufSize = if (withIndices) 4 + 8 * arr.length else 8 * arr.length
       val bbuf: ByteBuffer = ByteBuffer.allocate(bufSize)
       bbuf.order(ByteOrder.LITTLE_ENDIAN)
       if (withIndices) {
         bbuf.putInt(index)
       }
-      arr.foreach(bbuf.putDouble(_))
+      arr.foreach(bbuf.putDouble)
       bbuf.flip()
       while (bbuf.hasRemaining) {
         channel.write(bbuf)
