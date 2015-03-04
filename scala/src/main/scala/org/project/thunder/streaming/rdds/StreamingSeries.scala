@@ -1,7 +1,6 @@
 package org.project.thunder.streaming.rdds
 
 import org.apache.spark.TaskContext
-import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.Seconds
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.StreamingContext._
@@ -31,6 +30,7 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   /** Save to output files */
   def save(directory: String, prefix: String): Unit = {
     val writer = new TextWriter(directory, prefix)
+    dstream.print()
     dstream.foreachRDD{ (rdd, time) =>
       val writeShard = (context: TaskContext, part: Iterator[(Int, Array[Double])]) => {
         writer.withKeys(part, time, context.partitionId)
