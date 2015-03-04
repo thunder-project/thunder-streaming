@@ -4,14 +4,15 @@ import java.io.{BufferedWriter, FileWriter, File}
 
 /*** Class for writing an RDD to a text file */
 
-class TextWriter extends SeriesWriter with Serializable {
+class TextWriter(directory: String, filename: String)
+  extends Writer[Array[Double]](directory, filename) with Serializable {
 
-  override def extension = ".txt"
+  def extension = ".txt"
 
-  override def write(data: List[(Int, Array[Double])], file: File, withIndices: Boolean = true) = {
+  def write(rdd: Iterator[(Int, Array[Double])], file: File, withIndices: Boolean = true) = {
     printToFile(file)(bw => {
       // Write out the index if it exists
-      data.foreach(item => {
+      rdd.foreach(item => {
         if (withIndices) {
           bw.write("%d".format(item._1))
         }

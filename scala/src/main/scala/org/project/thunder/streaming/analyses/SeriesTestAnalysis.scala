@@ -55,21 +55,21 @@ class SeriesCountingAnalysis(tssc: ThunderStreamingContext, params: Map[String, 
 }
 
 class SeriesCombinedAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
-    def analyze(data: StreamingSeries): StreamingSeries = {
-      val means = data.seriesMean()
-      val stats = data.seriesStat()
-      val secondMeans = data.seriesMean()
-      new StreamingSeries(secondMeans.dstream.union(means.dstream.union(stats.dstream)))
-    }
+  def analyze(data: StreamingSeries): StreamingSeries = {
+    val means = data.seriesMean()
+    val stats = data.seriesStat()
+    val secondMeans = data.seriesMean()
+    new StreamingSeries(secondMeans.dstream.union(means.dstream.union(stats.dstream)))
+  }
 }
 
 class SeriesRegressionAnalysis(tssc: ThunderStreamingContext, params: Map[String, String]) extends SeriesTestAnalysis(tssc, params) {
-      def analyze(data: StreamingSeries): StreamingSeries = {
-        val slr = new StatefulLinearRegression()
-        val fittedStream = slr.runStreaming(data.dstream)
-        val weightsStream = fittedStream.map{case (key, model) => (key, model.weights)}
-        new StreamingSeries(weightsStream)
-      }
+  def analyze(data: StreamingSeries): StreamingSeries = {
+    val slr = new StatefulLinearRegression()
+    val fittedStream = slr.runStreaming(data.dstream)
+    val weightsStream = fittedStream.map{case (key, model) => (key, model.weights)}
+    new StreamingSeries(weightsStream)
+  }
 }
 
 
