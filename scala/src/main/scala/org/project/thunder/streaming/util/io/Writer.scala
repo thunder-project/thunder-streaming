@@ -13,25 +13,22 @@ import org.apache.spark.streaming.Time
  */
 abstract class Writer[V](directory: String, prefix: String) extends Serializable {
 
-  def write(rdd: Iterator[(Int, V)], file: File, withKeys: Boolean = false): Unit
+  def write(part: Iterator[(Int, V)], file: File, withKeys: Boolean = false): Unit
 
   def extension: String
 
-  private def seriesFile(time: Time): File = {
-    new File(directory ++ File.separator ++ prefix ++ "-" ++ time.toString.split(" ")(0) ++ extension)
+  private def seriesFile(time: Time, id: Int): File = {
+    new File(directory ++ File.separator ++ prefix ++ "-" ++ id.toString ++ "-"
+      ++ time.toString.split(" ")(0) ++ extension)
   }
 
-  def withoutKeys(rdd: Iterator[(Int, V)], time: Time) {
-    if (rdd.length > 0) {
-      val f = seriesFile(time)
-      write(rdd, f)
-    }
+  def withoutKeys(part: Iterator[(Int, V)], time: Time, id: Int) {
+    val f = seriesFile(time, id)
+    write(part, f)
   }
 
-  def withKeys(rdd: Iterator[(Int, V)], time: Time) {
-    if (rdd.length > 0) {
-      val f = seriesFile(time)
-      write(rdd, f, withKeys=true)
-    }
+  def withKeys(part: Iterator[(Int, V)], time: Time, id: Int) {
+    val f = seriesFile(time, id)
+    write(part, f, withKeys=true)
   }
 }

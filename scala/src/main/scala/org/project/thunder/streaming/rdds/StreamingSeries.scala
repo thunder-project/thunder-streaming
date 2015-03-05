@@ -1,11 +1,12 @@
 package org.project.thunder.streaming.rdds
 
+import org.apache.spark.TaskContext
 import org.apache.spark.streaming.Seconds
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.StreamingContext._
 
 import org.project.thunder.streaming.util.counters.StatUpdater
-import org.project.thunder.streaming.util.io.BinaryWriter
+import org.project.thunder.streaming.util.io.{BinaryWriter, TextWriter}
 
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   extends StreamingData[Array[Double], StreamingSeries] {
@@ -30,7 +31,10 @@ class StreamingSeries(val dstream: DStream[(Int, Array[Double])])
   def save(directory: String, prefix: String): Unit = {
     val writer = new BinaryWriter(directory, prefix)
     dstream.foreachRDD{ (rdd, time) =>
-      rdd.foreachPartition(part => writer.withKeys(part, time))
+      val writeShard = (context: TaskContext, part: Iterator[(Int, Array[Double])]) => {
+        writer.withKeys(part, time, context.partitionId)
+      }
+      rdd.context.runJob(rdd, writeShard)
     }
   }
 
