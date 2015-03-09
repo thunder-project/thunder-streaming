@@ -2,17 +2,18 @@ package org.project.thunder.streaming.util.io
 
 import java.io.{BufferedWriter, FileWriter, File}
 
-/*** Class for writing an RDD to a text file */
+/*** Class for writing an RDD partition to a text file */
 
-class TextWriter extends SeriesWriter with Serializable {
+class TextWriter(directory: String, prefix: String)
+  extends Writer[Array[Double]](directory, prefix) {
 
-  override def extension = ".txt"
+  def extension = ".txt"
 
-  override def write(data: List[(Int, Array[Double])], file: File, withIndices: Boolean = true) = {
+  def write(part: Iterator[(Int, Array[Double])], file: File, withKeys: Boolean = true) = {
     printToFile(file)(bw => {
       // Write out the index if it exists
-      data.foreach(item => {
-        if (withIndices) {
+      part.foreach(item => {
+        if (withKeys) {
           bw.write("%d".format(item._1))
         }
         item._2.foreach(x => bw.write(" %.6f".format(x)))
