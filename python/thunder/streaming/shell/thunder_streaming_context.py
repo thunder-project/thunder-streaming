@@ -1,6 +1,6 @@
 from thunder.streaming.shell.analysis import Analysis
 from thunder.streaming.shell.output import Output
-from thunder.streaming.shell.update_handler import UpdateHandler
+from thunder.streaming.shell.param_listener import ParamListener
 from thunder.streaming.shell.settings import *
 
 import signal
@@ -11,7 +11,7 @@ from subprocess import Popen
 import time
 
 
-class ThunderStreamingContext(UpdateHandler):
+class ThunderStreamingContext(ParamListener):
     """
     Serves as the main interface to the Scala backend. The main thunder-streaming JAR is searched for Analysis and
     Output classes, and those classes are inserted into the object dictionaries for Analysis and Output
@@ -166,8 +166,8 @@ class ThunderStreamingContext(UpdateHandler):
         build_params(analysis_elem, analysis.get_parameters())
         build_outputs(analysis_elem)
 
-        # Set this TSSC as the UpdateHandler for this Analysis instance
-        analysis.set_handler(self)
+        # Set this TSSC as the ParamListener for this Analysis instance
+        analysis.set_param_listener(self)
 
         # Write the configuration to a temporary file and record the name
         temp = NamedTemporaryFile(delete=False)

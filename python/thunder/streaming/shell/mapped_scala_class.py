@@ -48,19 +48,19 @@ class MappedScalaClass(object):
         self._param_dict = param_dict
         self.full_name = full_name
         self.identifier = identifier
-        # A handler is notified whenever one of its owned objects is modified
-        self._handler = None
+        # A param listener is notified whenever one of its owned objects is modified
+        self._param_listener = None
 
-    def set_handler(self, handler):
-        self._handler = handler
+    def set_param_listener(self, listener):
+        self._param_listener = listener
 
     def update_parameter(self, name, value):
         self._param_dict[name] = value
-        self.notify_handler()
+        self.notify_param_listener()
 
-    def notify_handler(self):
-        if self._handler:
-            self._handler.handle_update(self)
+    def notify_param_listener(self):
+        if self._param_listener:
+            self._param_listener.handle_update(self)
 
     def get_parameters(self):
         # Return a copy so that the actual parameter dictionary is never directly modified

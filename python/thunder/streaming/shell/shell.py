@@ -56,12 +56,10 @@ def find_jar(thunder_path=None):
             continue
     return None, None
 
-
 def build_project():
     # TODO: This will only work from the project directory
     call(["sbt", "package"])
     return True
-
 
 def configure_context():
     """

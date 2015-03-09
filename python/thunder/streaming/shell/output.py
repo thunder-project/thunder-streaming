@@ -1,20 +1,18 @@
-from thunder.streaming.shell.mapped_scala_class import MappedScalaClass
+from abc import abstractmethod
 
-
-class Output(MappedScalaClass):
+class Output(object):
     """
-    This class is dynamically modified by ThunderStreamingContext when it's initialized with a JAR file
+    The abstract base class for those classes that take the output from an Analysis/Converter combination and sends
+    it to some external location (most likely a visualization server or storage)
     """
 
-    def __repr__(self):
-        desc_str = "Output: \n"
-        desc_str += "  Identifier: %s\n" % self.identifier
-        desc_str += "  Class: %s\n" % self.full_name
-        desc_str += "  Parameters: \n"
-        if self._param_dict:
-            for (key, value) in self._param_dict.items():
-                desc_str += "    %s: %s\n" % (key, value)
-        return desc_str
+    @abstractmethod
+    def send(self, converted_output):
+        """
+        Takes the converted, in-memory representation of an Analysis output, and sends it to an external location.
 
-    def __str__(self):
-        return self.__repr__()
+        :param converted_output: The output from an Analysis that has been converted into a suitable in-memory
+        representation (analysis/output specific).
+        :return:
+        """
+        pass
