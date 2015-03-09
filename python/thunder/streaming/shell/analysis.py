@@ -2,11 +2,12 @@ from thunder.streaming.shell.mapped_scala_class import MappedScalaClass
 from thunder.streaming.shell.param_listener import ParamListener
 from thunder.streaming.shell.update_handler import Updatable
 from abc import abstractmethod
-from socket import create_connection
 from Queue import Queue, Empty
 from threading import Thread
 from ctypes import c_int64
 from struct import pack
+import socket
+from time import sleep
 
 class DataSender(Thread, Updatable):
     """
@@ -29,6 +30,7 @@ class DataSender(Thread, Updatable):
         self.stop = True
 
     def start(self):
+        self.initialize()
         while not self.stop:
             new_data = None
             try:
@@ -38,21 +40,43 @@ class DataSender(Thread, Updatable):
             self.send(new_data)
 
     @abstractmethod
+    def initialize(self):
+        """
+        Initialization that should be performed from inside the DataSender thread
+        """
+        pass
+
+    @abstractmethod
     def send(self, data):
         pass
 
+    @abstractmethod
+    def get_description(self):
+        """
+        Returns a description of this DataSender which is sent to the Scala Analysis so that it can establish a
+        connection.
+        """
+        pass
+
     @staticmethod
-    def get_data_sender():
+    def get_data_sender(**kwargs):
         """
         DataSender factory
         """
-        return TCPSender
+        return TCPSender(kwargs)
+
 
 
 class TCPSender(DataSender):
     """
     Sends raw update data to a Scala analysis through a TCP channel
+
+    TODO: Better error handling in the event that a connection is never established
     """
+
+    NUM_CONN_RETRIES = 10
+    NUM_SEND_RETRIES = 5
+    RETRY_WAIT_TIME = 3
 
     class Header(object):
         """
@@ -70,27 +94,78 @@ class TCPSender(DataSender):
         def get_size(self):
             return self.size
 
+    class Ack(object):
+        """
+        A 1-byte response returned from the Analysis once it's received an update
+        """
+        SUCCESS = 1
+        FAILURE = 0
+
+        @staticmethod
+        def is_success(byte):
+            if int(byte) & TCPSender.Ack.SUCCESS:
+                return True
+            else:
+                return False
+
     def __init__(self, **kwargs):
         DataSender.__init__(self)
-        self.host = kwargs.get('host')
-        self.port = kwargs.get('port')
-        self.socket = None
-        self.reconnect()
+        self.host = kwargs.get('host', 'localhost')
+        self.port = kwargs.get('port', 0)
+        self.recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.send_socket = None
+        self.listening = False
 
-    def reconnect(self):
-        if self.host and self.port:
-            self.socket = create_connection((self.host, self.port))
-        if not self.socket:
-            print "Could not open a socket connection to %s:%s" % (self.host, self.port)
+    def initialize(self):
+        self._start_server()
+
+    def _start_server(self):
+        for i in xrange(TCPSender.NUM_CONN_RETRIES):
+            try:
+                self.recv_socket = self.recv_socket.bind((self.host, self.port))
+                self.port = self.recv_socket.getsockname()[1]
+                self.recv_socket.listen(5)
+                self.listening = True
+                break
+            except Exception as e:
+                print "Error in TCPSender._start_server: %s" % e
+                sleep(TCPSender.RETRY_WAIT_TIME)
+        if not self.listening:
+            print "Could not bind a socket connection to %s:%s" % (self.host, self.port)
+
+    def _wait_for_conn(self):
+        if not self.listening:
+            self._start_server()
+        if self.listening:
+            (conn, addr) = self.recv_socket.accept()
+            self.send_socket = conn
 
     def send(self, data):
-        if not self.socket:
-            self.reconnect()
-        if self.socket:
-            header = TCPSender.Header(data)
-            size = header.get_size()
+        if not self.send_socket:
+            self._wait_for_conn()
+        if not self.send_socket:
+            print "DataServer could not be started. Cannot update the analysis."
+            return
+        header = TCPSender.Header(data)
+        size = header.get_size()
+        if size != -1:
             packed_data = pack("q%ss" % size, size, data)
-            self.socket.sendall(packed_data)
+        else:
+            print "In TCPSender.send, data is not properly formed. Cannot update the analysis."
+        for i in xrange(TCPSender.NUM_SEND_RETRIES):
+            self.send_socket.sendall(packed_data)
+            rsp = self.send_socket.recv(1)
+            if TCPSender.Ack.is_success(rsp):
+                return
+            else:
+                print "Sending message to analysis failed. Retry attempt %d..." % i
+        print "Failed to send message to analysis after %d retries." % TCPSender.NUM_SEND_RETRIES
+
+    def get_description(self):
+        return {
+            'host': self.host,
+            'port': self.port
+        }
 
 
 class Analysis(MappedScalaClass, ParamListener):
@@ -101,7 +176,15 @@ class Analysis(MappedScalaClass, ParamListener):
     def __init__(self, identifier, full_name, param_dict):
         super(Analysis, self).__init__(identifier, full_name, param_dict)
         self.outputs = {}
-        self.data_sender = None
+        # Create an instance of the default DataSender
+        self.data_sender = DataSender.get_data_sender()
+        self.data_sender.start()
+        # Now that the DataSender has been started, get its description and add it to the param dictionary
+        desc = self.data_sender.get_description()
+        for k,v in desc.items():
+            # DataSender parameters are prefixed with a 'ds_' so that there aren't namespace collisions between
+            # Analysis params and DataSender params
+            self.update_parameter('ds_'+k, v)
 
     def add_output(self, *outputs):
         for output in outputs:
@@ -110,8 +193,14 @@ class Analysis(MappedScalaClass, ParamListener):
             output.set_handler(self)
         self.notify_param_listener()
 
-    def add_updater(self, updater):
-        updater.add_listener(self.identifier, self.data_sender)
+    def receive_updates(self, updater, tag=None):
+        """
+        Bind the Updater to this Analysis' DataSender. Whenever an update is received from an external source, it
+        will be inserted into the DataSender's queue.
+        """
+        if not tag:
+            tag = self.identifier
+        updater.add_listener(tag, self.data_sender)
 
     def remove_output(self, maybe_id):
         output_id = None

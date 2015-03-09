@@ -50,9 +50,6 @@ class ThunderStreamingContext(ParamListener):
             if analysis_regex.match(name):
                 fixed_name = fix_name(name)
                 setattr(Analysis, fixed_name[-1], Analysis.make_method(fixed_name[-1], '.'.join(fixed_name)))
-            elif output_regex.match(name):
-                fixed_name = fix_name(name)
-                setattr(Output, fixed_name[-1], Output.make_method(fixed_name[-1], '.'.join(fixed_name)))
         return ThunderStreamingContext(jar_name)
 
     def __init__(self, jar_name):
@@ -83,6 +80,13 @@ class ThunderStreamingContext(ParamListener):
             'HADOOP_BLOCK_SIZE': '1'
         }
 
+        # Build setters for each existing run parameter
+        for key in self.run_parameters.keys():
+            def param_setter(self, value):
+                self.run_parameters[key] = value
+                self._update_env()
+            self.__dict__["set_"+key.lower()] = str(param_setter)
+
         # Gracefully handle SIGINT and SIGTERM signals
         def handler(signum, stack):
             self._handle_int()
@@ -109,37 +113,6 @@ class ThunderStreamingContext(ParamListener):
             if value:
                 os.putenv(name, value)
 
-    def set_master(self, master):
-        self.run_parameters['MASTER'] = master
-        self._update_env()
-
-    def set_batch_time(self, batch_time):
-        self.run_parameters['BATCH_TIME'] = batch_time
-        self._update_env()
-
-    def set_config_file_path(self, cf_path):
-        self.run_parameters['CONFIG_FILE_PATH'] = cf_path
-        self._update_env()
-
-    def set_checkpoint_dir(self, cp_dir):
-        self.run_parameters['CHECKPOINT'] = cp_dir
-        self._update_env()
-
-    def set_hadoop_block_size(self, block_size):
-        self.run_parameters['HADOOP_BLOCK_SIZE'] = block_size
-        self._update_env()
-
-    def set_default_parallelism(self, def_p):
-        self.run_parameters['PARALLELISM'] = def_p
-        self._update_env()
-
-    def set_checkpoint_interval(self, interval):
-        self.run_parameters['CHECKPOINT_INTERVAL'] = interval
-        self._update_env()
-
-    def set_feeder_conf(self, feeder_conf):
-        self.feeder_conf = feeder_conf
-
     def add_analysis(self, analysis):
 
         if self.state == self.STARTED:
@@ -152,19 +125,10 @@ class ThunderStreamingContext(ParamListener):
                 param_elem.set("name", name)
                 param_elem.set("value", value)
 
-        def build_outputs(analysis_elem):
-            outputs = analysis.get_outputs()
-            for output in outputs:
-                output_child = ET.SubElement(analysis_elem, "output")
-                name_elem = ET.SubElement(output_child, "name")
-                name_elem.text = output.full_name
-                build_params(output_child, output.get_parameters())
-
         analysis_elem = ET.SubElement(self.doc.getroot(), "analysis")
         name_elem = ET.SubElement(analysis_elem, "name")
         name_elem.text = analysis.full_name
         build_params(analysis_elem, analysis.get_parameters())
-        build_outputs(analysis_elem)
 
         # Set this TSSC as the ParamListener for this Analysis instance
         analysis.set_param_listener(self)

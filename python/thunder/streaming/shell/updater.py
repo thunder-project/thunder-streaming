@@ -26,7 +26,9 @@ class Updater(Thread):
         self.pause = pause
 
     def add_listener(self, lid, listener):
-        self.listeners[lid] = listener
+        if lid not in self.listeners:
+            self.listeners[lid] = []
+        self.listeners[lid].append(listener)
 
     @abstractmethod
     def fetch_update(self):
@@ -49,6 +51,7 @@ class Updater(Thread):
         while not self.stop:
             tag, data = self.fetch_update()
             if tag in self.listeners:
-                listener = self.listeners[tag]
-                listener.handle_update(data)
+                listeners = self.listeners[tag]
+                for listener in listeners:
+                    listener.handle_update(data)
             sleep(self.paused)
