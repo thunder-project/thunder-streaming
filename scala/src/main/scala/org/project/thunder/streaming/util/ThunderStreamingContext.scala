@@ -1,5 +1,6 @@
 package org.project.thunder.streaming.util
 
+import akka.actor.ActorSystem
 import org.apache.spark.streaming.StreamingContext
 
 import org.project.thunder.streaming.rdds.{StreamingSeries, StreamingSeriesLoader}
@@ -7,6 +8,8 @@ import org.project.thunder.streaming.rdds.{StreamingSeries, StreamingSeriesLoade
 class ThunderStreamingContext(ssc: StreamingContext) {
 
   ssc.checkpoint(System.getenv("CHECKPOINT"))
+
+  val actorSystem = ActorSystem("tssc_actor_system")
 
   def loadStreamingSeries(
       dataPath: String,
