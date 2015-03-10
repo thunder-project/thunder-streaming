@@ -2,14 +2,6 @@ from abc import abstractmethod
 from threading import Thread
 from time import sleep
 
-class Updatable(object):
-    """
-    Interface for a class that can handle analysis updates from an external source
-    """
-    @abstractmethod
-    def handle_update(self, data):
-        pass
-
 
 class Updater(Thread):
     """
@@ -18,17 +10,11 @@ class Updater(Thread):
      appropriate Analysis objects (in the streaming process).
     """
 
-    def __init__(self, pause=0):
-        # A map from listener ID to listener
-        self.listeners = {}
+    def __init__(self, tssc, pause=0):
         self.stop = False
         # Amount of time to pause between each fetch
         self.pause = pause
-
-    def add_listener(self, lid, listener):
-        if lid not in self.listeners:
-            self.listeners[lid] = []
-        self.listeners[lid].append(listener)
+        self.pub_client = tssc.get_message_proxy().get_publisher()
 
     @abstractmethod
     def fetch_update(self):
@@ -50,8 +36,5 @@ class Updater(Thread):
         """
         while not self.stop:
             tag, data = self.fetch_update()
-            if tag in self.listeners:
-                listeners = self.listeners[tag]
-                for listener in listeners:
-                    listener.handle_update(data)
+            self.pub_client.publish(tag, data)
             sleep(self.paused)

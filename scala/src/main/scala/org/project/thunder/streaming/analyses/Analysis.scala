@@ -7,6 +7,11 @@ import scala.xml.NodeSeq
 
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
+// ZeroMQ imports
+import org.zeromq.ZMQ
+import org.zeromq.ZMQ.{Context, Socket}
+
+
 object Analysis {
   /*
   Schema:
@@ -21,8 +26,9 @@ object Analysis {
   final val OUTPUT = "output"
   final val INPUT = "input"
   final val PREFIX = "prefix"
-  final val HOST = "host"
-  final val PORT = "port"
+  final val HOST = "ds_host"
+  final val PORT = "ds_port"
+  final val IDENTIFIER = "identifier"
 
   class BadAnalysisConfigException(msg: String) extends RuntimeException(msg)
 
@@ -95,6 +101,7 @@ abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext,
     val receiverParams = Map[String, String](
       "host" -> getParam(Analysis.HOST),
       "port" -> getParam(Analysis.PORT)
+      "identifier" -> getParam(Analysis.IDENTIFIER)
     )
     val receiver = DataReceiver.getDataReceiver(this, receiverParams)
     new Thread(new Runnable {

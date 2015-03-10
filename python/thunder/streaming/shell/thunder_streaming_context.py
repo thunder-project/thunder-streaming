@@ -1,6 +1,7 @@
 from thunder.streaming.shell.analysis import Analysis
 from thunder.streaming.shell.output import Output
 from thunder.streaming.shell.param_listener import ParamListener
+from thunder.streaming.shell.message_proxy import MessageProxy
 from thunder.streaming.shell.settings import *
 
 import signal
@@ -94,6 +95,9 @@ class ThunderStreamingContext(ParamListener):
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
 
+        # ZeroMQ messaging proxy
+        self.message_proxy = MessageProxy()
+
         self._reset_document()
         self._reinitialize()
 
@@ -121,9 +125,12 @@ class ThunderStreamingContext(ParamListener):
 
         def build_params(parent, param_dict):
             for (name, value) in param_dict.items():
-                param_elem = ET.SubElement(parent, "param")
-                param_elem.set("name", name)
-                param_elem.set("value", value)
+                # Shortest way to do this
+                vs = [value] if not isinstance(value, list) else value
+                for v in vs:
+                    param_elem = ET.SubElement(parent, "param")
+                    param_elem.set("name", name)
+                    param_elem.set("value", v)
 
         analysis_elem = ET.SubElement(self.doc.getroot(), "analysis")
         name_elem = ET.SubElement(analysis_elem, "name")
