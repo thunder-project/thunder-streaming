@@ -10,18 +10,18 @@ import cern.colt.matrix.{DoubleFactory1D, DoubleFactory2D}
 
 import org.scalatest.FunSuite
 import com.google.common.io.Files
-import thunder.util.LoadStreaming
 import scala.util.Random
 import java.io.File
 import org.apache.commons.io.FileUtils
 
+import org.project.thunder.streaming.util.ThunderStreamingContext
 
 /**
-  * NOTE: Currently performing all streaming related tests
-  * in one suite. I tried moving these exact same tests into separate
-  * test suites but it caused several File IO related bugs,
-  * still need to track them down.
-  */
+ * NOTE: Currently performing all streaming related tests
+ * in one suite. I tried moving these exact same tests into separate
+ * test suites but it caused several File IO related bugs,
+ * still need to track them down.
+ */
 class StreamingBasicSuite extends FunSuite {
 
   import thunder.TestUtils._
@@ -43,12 +43,13 @@ class StreamingBasicSuite extends FunSuite {
     val testDir = Files.createTempDir()
     val checkpointDir = Files.createTempDir()
     val ssc = new StreamingContext(conf, Seconds(1))
-    val data = LoadStreaming.fromTextWithKeys(ssc, testDir.toString)
+    val tssc = new ThunderStreamingContext(ssc)
+    val data = tssc.loadStreamingSeries(testDir.toString, inputFormat="text")
 
     // create and train linear model
-    val state = StatefulStats.trainStreaming(data)
-    var counter = new StatCounter()
-    state.foreachRDD{rdd => counter = rdd.values.first()}
+    val state = data.seriesStats()
+    var counter = Array(0.0, 0.0, 0.0, 0.0, 0.0)
+    state.dstream.foreachRDD{rdd => counter = rdd.values.first()}
     ssc.checkpoint(checkpointDir.toString)
     ssc.start()
 
@@ -69,9 +70,9 @@ class StreamingBasicSuite extends FunSuite {
     FileUtils.deleteDirectory(testDir)
 
     // compare estimated parameters to actual
-    assertEqual(counter.mean, mean, 0.1)
-    assertEqual(counter.variance, variance, 0.1)
-    assertEqual(counter.count, n * m, 0.0001)
+    assertEqual(counter(1), mean, 0.1)
+    assertEqual(counter(2), variance, 0.1)
+    assertEqual(counter(1), n * m, 0.0001)
 
   }
 
