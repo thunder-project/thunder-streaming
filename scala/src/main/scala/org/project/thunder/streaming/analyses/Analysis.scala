@@ -1,17 +1,11 @@
 package org.project.thunder.streaming.analyses
 
-import org.project.thunder.streaming.analyses.Analysis.AnalysisParams
 import org.project.thunder.streaming.rdds.StreamingData
 
 import scala.util.{Failure, Success, Try}
 import scala.xml.NodeSeq
 
 import org.project.thunder.streaming.util.ThunderStreamingContext
-
-// ZeroMQ imports
-import org.zeromq.ZMQ
-import org.zeromq.ZMQ.{Context, Socket}
-
 
 object Analysis {
   /*
@@ -46,10 +40,12 @@ object Analysis {
       }
     }
     // Extract all parameters necessary to instantiate an instance of the above output type
-    def extractParameters(nodes: NodeSeq): Try[Map[String,String]] =  {
+    def extractParameters(nodes: NodeSeq): Try[AnalysisParams] =  {
       val paramNodes = nodes \ "param"
-      val paramList = (paramNodes \\ "@name").map(_.text).zip((paramNodes \\ "@value").map(_.text)).toList
-      Success(Map(paramList: _*))
+      val ungroupedParams = (paramNodes \\ "@name").map(_.text).zip((paramNodes \\ "@value").map(_.text)).toList
+      val groupedParams = ungroupedParams.groupBy{ case (k, v) => k }.map{ case (k, v) => (k, v.map(_._2)) }
+      println("groupedParams: %s".format(groupedParams.toString))
+      Success(new AnalysisParams(groupedParams))
     }
     // Attempt to invoke the (maybe) AnalysisOutput class' constructor with paramMap as an argument
     // Not using for..yield because I want Failures to propagate out of this method
@@ -63,12 +59,11 @@ object Analysis {
   }
 
   // Code modified from http://stackoverflow.com/questions/1641104/instantiate-object-with-reflection-using-constructor-arguments
-  def instantiateAnalysis[T <: Analysis[_]](clazz: java.lang.Class[T])(args:AnyRef*): T = {
-    val constructor = clazz.getConstructors()(0)
-    constructor.newInstance(args:_*).asInstanceOf[T]
+  def instantiateAnalysis[T <: Analysis[_]](clazz: java.lang.Class[T])(tssc: ThunderStreamingContext, params: AnalysisParams): T = {
+    val constructors = clazz.getConstructors
+    val constructor = constructors(0)
+    constructor.newInstance(tssc, params).asInstanceOf[T]
   }
-
-  type AnalysisParams =  Map[String, List[String]]
 }
 
 class AnalysisParams(val param_map: Map[String, List[String]]) {

@@ -12,7 +12,7 @@ abstract class SeriesTestAnalysis(tssc: ThunderStreamingContext, params: Analysi
     tssc.loadStreamingSeries(path, inputFormat = format)
   }
 
-  def run(data: StreamingSeries): StreamingSeries = {
+  override def run(data: StreamingSeries): StreamingSeries = {
     analyze(data)
   }
 

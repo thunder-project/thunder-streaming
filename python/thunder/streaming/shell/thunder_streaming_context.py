@@ -84,10 +84,13 @@ class ThunderStreamingContext(ParamListener):
 
         # Build setters for each existing run parameter
         for key in self.run_parameters.keys():
-            def param_setter(value):
-                self.run_parameters[key] = str(value)
-                self._update_env()
-            self.__dict__["set_"+key.lower()] = param_setter
+            def setter_builder(key):
+                def param_setter(value):
+                    self.run_parameters[key] = str(value)
+                    print "In param_setter, setting: %s to %s" % (key, value)
+                    self._update_env()
+                return param_setter
+            self.__dict__["set_"+key.lower()] = setter_builder(key)
 
         # Gracefully handle SIGINT and SIGTERM signals
         def handler(signum, stack):
@@ -240,7 +243,7 @@ class ThunderStreamingContext(ParamListener):
         """
         full_jar = os.path.join(os.getcwd(), self.jar_name)
         spark_path = os.path.join(SPARK_HOME, "bin", "spark-submit")
-        base_args = [spark_path, "--jars", THUNDER_STREAMING_PATH + "/scala/project/lib/jzmq-3.1.0.jar",
+        base_args = [spark_path, "--jars", os.path.join(THUNDER_STREAMING_PATH, "scala/project/lib/jeromq-0.3.4.jar"),
                      "--class", "org.project.thunder.streaming.util.launch.Launcher", full_jar]
         self.streamer_child = Popen(base_args)
 

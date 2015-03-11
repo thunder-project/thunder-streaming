@@ -20,7 +20,7 @@ class AnalysisManager(tssc: ThunderStreamingContext, path: String) {
         maybeAnalysis match {
           case Success(analysis) => analysis :: analysisList
           case Failure(f) => {
-            println(f)
+            f.printStackTrace()
             analysisList
           }
         }
