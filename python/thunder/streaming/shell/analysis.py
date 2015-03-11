@@ -1,12 +1,6 @@
 from thunder.streaming.shell.mapped_scala_class import MappedScalaClass
 from thunder.streaming.shell.param_listener import ParamListener
-from abc import abstractmethod
-from Queue import Queue, Empty
-from threading import Thread
-from ctypes import c_int64
-from struct import pack
-import socket
-from time import sleep
+import settings
 
 
 class Analysis(MappedScalaClass, ParamListener):
@@ -14,9 +8,16 @@ class Analysis(MappedScalaClass, ParamListener):
     This class is dynamically modified by ThunderStreamingContext when it's initialized with a JAR file
     """
 
+    SUBSCRIPTION_PARAM = "dr_subscription"
+    SUB_HOST_PARAM = "dr_host"
+    SUB_PORT_PARAM = "dr_port"
+
     def __init__(self, identifier, full_name, param_dict):
         super(Analysis, self).__init__(identifier, full_name, param_dict)
         self.outputs = {}
+        # Put the host/port of the subscription forwarder into the parameters dict
+        self._param_dict[Analysis.SUB_HOST_PARAM] = settings.MASTER
+        self._param_dict[Analysis.SUB_PORT_PARAM] = settings.SUB_PORT
 
     def add_output(self, *outputs):
         for output in outputs:
@@ -30,16 +31,16 @@ class Analysis(MappedScalaClass, ParamListener):
         Write a parameter to the Analysis' XML file that tells it to subscribe to updates from the given
         analysis.
         """
-        existing_subs = self._param_dict.get('subscription')
+        existing_subs = self._param_dict.get(Analysis.SUBSCRIPTION_PARAM)
         if not existing_subs:
             existing_subs = [analysis]
         identifier = analysis if isinstance(analysis, str) else analysis.identifier
         if not existing_subs:
             new_sub = [identifier]
-            self.update_parameter('subscription', new_sub)
+            self.update_parameter(Analysis.SUBSCRIPTION_PARAM, new_sub)
         else:
             existing_subs.append(identifier)
-            self.update_parameter('subscription', existing_subs)
+            self.update_parameter(Analysis.SUBSCRIPTION_PARAM, existing_subs)
 
     def remove_output(self, maybe_id):
         output_id = None

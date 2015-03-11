@@ -1,41 +1,40 @@
 package org.project.thunder.streaming.analyses
 
+import org.project.thunder.streaming.util.ThunderStreamingContext
+
+import org.zeromq.ZMQ
+
+
 /**
  * Receives updates from an Analysis' corresponding Python Analysis (in the manager) using a simple TCP-based
  *
  */
-
-abstract class DataReceiver(listener: Updatable, params: Map[String, String]) {
-  def connect(): Unit
+abstract class DataReceiver(listener: Updatable, params: AnalysisParams) {
   def receive(): Unit
 }
 
 object DataReceiver {
-  def getDataReceiver(listener: Updatable, params: Map[String, String] = Map[String, String]()): DataReceiver = {
-    new TCPDataReceiver(listener, params)
+  def getDataReceiver(tssc: ThunderStreamingContext, listener: Updatable, params: AnalysisParams = new AnalysisParams(Map[String, List[String]]())): DataReceiver = {
+    new ZeroMQReceiver(tssc, listener, params)
+  }
+
+  final val FORWARDER_ADDR = "dr_forwarder_addr"
+  final val TAGS = "dr_subscription"
+}
+
+
+class ZeroMQReceiver(tssc: ThunderStreamingContext, listener: Updatable, params: AnalysisParams) extends DataReceiver(listener, params) {
+
+  val sub_sock = tssc.context.socket(ZMQ.SUB)
+  sub_sock.connect(params.getSingleParam(DataReceiver.FORWARDER_ADDR))
+  val subscribers = params.getParam(DataReceiver.TAGS)
+  // Subscribe to each of the subscribers
+  subscribers.map{ s =>sub_sock.subscribe(s.getBytes()) }
+
+  override def receive(): Unit = {
+    val tag = new String(sub_sock.recv(0))
+    val msg = new String(sub_sock.recv(0))
+    listener.handleUpdate((tag, msg))
   }
 }
 
-class ZeroMQReceiver(listener: Updatable, params: Map[String, String]) extends DataReceiver(listener, params) {
-  override def connect(): Unit = ???
-
-  override def receive(): Unit = ???
-}
-
-class TCPDataReceiver(listener: Updatable, params: Map[String, String]) extends DataReceiver(listener, params) {
-
-  def connect(): Unit = {
-    val host = params.getOrElse("host", "localhost")
-    val port = params.getOrElse("port", "0").toInt
-    /*
-    for {
-      conn <-
-    }
-    */
-  }
-
-  def receive(): Unit = {
-
-  }
-
-}

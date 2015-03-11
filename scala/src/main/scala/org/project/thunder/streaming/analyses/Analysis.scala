@@ -1,5 +1,6 @@
 package org.project.thunder.streaming.analyses
 
+import org.project.thunder.streaming.analyses.Analysis.AnalysisParams
 import org.project.thunder.streaming.rdds.StreamingData
 
 import scala.util.{Failure, Success, Try}
@@ -26,8 +27,6 @@ object Analysis {
   final val OUTPUT = "output"
   final val INPUT = "input"
   final val PREFIX = "prefix"
-  final val HOST = "ds_host"
-  final val PORT = "ds_port"
   final val IDENTIFIER = "identifier"
 
   class BadAnalysisConfigException(msg: String) extends RuntimeException(msg)
@@ -68,16 +67,22 @@ object Analysis {
     val constructor = clazz.getConstructors()(0)
     constructor.newInstance(args:_*).asInstanceOf[T]
   }
+
+  type AnalysisParams =  Map[String, List[String]]
+}
+
+class AnalysisParams(val param_map: Map[String, List[String]]) {
+  def getParam(key: String): List[String] = param_map.getOrElse(key, List(""))
+  def getSingleParam(key: String): String = getParam(key)(0)
 }
 
 trait Updatable {
-  def handleUpdate(update: String)
+  def handleUpdate(update: (String, String))
 }
 
-abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext, params: Map[String, String])
-  extends Updatable {
 
-  def getParam(key: String): String = params.getOrElse(key, "")
+abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext, params: AnalysisParams)
+  extends Updatable {
 
   // Mutable parameters that can be updated at runtime by the DataReceiver Thread
   // TODO: This should be made more generic (restricting the value type to String is too limiting)
@@ -98,15 +103,14 @@ abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext,
    * the updatableVars map.
    */
   def startListening(): Unit = {
-    val receiverParams = Map[String, String](
-      "host" -> getParam(Analysis.HOST),
-      "port" -> getParam(Analysis.PORT)
-      "identifier" -> getParam(Analysis.IDENTIFIER)
-    )
-    val receiver = DataReceiver.getDataReceiver(this, receiverParams)
+    val keySet = Set(DataReceiver.HOST, DataReceiver.PORT, DataReceiver.TAGS)
+    val receiverParams = new AnalysisParams(params.param_map.filterKeys(keySet.contains(_)))
+    val self = this
     new Thread(new Runnable {
       def run() = {
-        receiver.connect()
+        // This is NOT thread-safe, but that should be fine.
+        // TODO: Would changing updatableParams into a thread-safe data structure affect Spark's serialization?
+        val receiver = DataReceiver.getDataReceiver(tssc, self, receiverParams)
         while (!Thread.interrupted()) {
           receiver.receive()
         }
@@ -115,9 +119,9 @@ abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext,
   }
 
   def process(): Unit = {
-    val data = load(getParam(Analysis.INPUT))
+    val data = load(params.getSingleParam(Analysis.INPUT))
     val out = run(data)
-    out.save(getParam(Analysis.OUTPUT), getParam(Analysis.PREFIX))
+    out.save(params.getSingleParam(Analysis.OUTPUT), params.getSingleParam(Analysis.PREFIX))
   }
 
   def load(path: String): T

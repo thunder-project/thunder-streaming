@@ -1,15 +1,19 @@
 package org.project.thunder.streaming.util
 
-import akka.actor.ActorSystem
 import org.apache.spark.streaming.StreamingContext
+import org.zeromq.ZMQ
 
 import org.project.thunder.streaming.rdds.{StreamingSeries, StreamingSeriesLoader}
+
+object ThunderStreamingContext {
+  val NUM_ZMQ_THREADS = 1
+}
 
 class ThunderStreamingContext(ssc: StreamingContext) {
 
   ssc.checkpoint(System.getenv("CHECKPOINT"))
 
-  val actorSystem = ActorSystem("tssc_actor_system")
+  val context = ZMQ.context(ThunderStreamingContext.NUM_ZMQ_THREADS)
 
   def loadStreamingSeries(
       dataPath: String,
