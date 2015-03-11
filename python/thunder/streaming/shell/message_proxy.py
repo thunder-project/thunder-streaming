@@ -1,5 +1,6 @@
 
 import zmq
+from zmq.devices import ThreadDevice
 from threading import Thread
 import settings
 
@@ -69,10 +70,10 @@ class Subscriber(object):
         return Subscriber(context, addr, tag)
 
 
-class MessageProxy(Thread):
+class MessageProxy(object):
     """
     The MessageProxy wraps a ZeroMQ proxy server (XSUB socket) which forwards 'publish' messages from Python Analysis
-    objects to subscribers (Scala Analysis objects) in the streamer process. Each message handled by the MessageManager is
+    objects to subscribers (Scala Analysis objects) in the streamer process.
     """
 
     DEFAULT_NUM_THREADS = 1
@@ -89,46 +90,29 @@ class MessageProxy(Thread):
     DEFAULT_BIND_HOST = "localhost"
 
     def __init__(self, host=DEFAULT_BIND_HOST, num_threads=DEFAULT_NUM_THREADS):
-        Thread.__init__(self)
         self.initialized = False
         self.context = zmq.Context(num_threads)
         self.host = host
 
-        self.remote_frontend = None
-        self.remote_backend = None
-        self.local_frontend = None
-        self.local_backend = None
+        self.device_thread = None
 
-    def run(self):
-        try:
+    def start(self):
+        # Launch two proxy sockets, one for remote communication, and one for in-process communication.
+        self.device_thread = ThreadDevice(zmq.FORWARDER, zmq.XSUB, zmq.XPUB)
+        self.device_thread.bind_in("tcp://*:" + str(MessageProxy.SUB_PORT))
+        self.device_thread.bind_out("tcp://*:" + str(MessageProxy.PUB_PORT))
+        self.device_thread.start()
 
-            # Launch two proxy sockets, one for remote communication, and one for in-process communication.
-            self.remote_frontend = self.context.socket(zmq.XSUB)
-            self.remote_frontend.bind("tcp://*:" + str(MessageProxy.SUB_PORT))
-            self.remote_backend = self.context.socket(zmq.XPUB)
-            self.remote_backend.bind("tcp://*:" + str(MessageProxy.PUB_PORT))
-            zmq.device(zmq.FORWARDER, self.remote_frontend, self.remote_backend)
+        # TODO Finish in-process communication
+        """
+        self.local_frontend = self.context.socket(zmq.XSUB)
+        self.local_frontend.bind("inproc://" + MessageProxy.INPROC_SUB_ID)
+        self.local_backend = self.context.socket(zmq.XPUB)
+        self.local_backend.bind("inproc://" + MessageProxy.INPROC_PUB_ID)
+        zmq.device(zmq.FORWARDER, self.local_frontend, self.local_backend)
+        """
 
-            # TODO Finish in-process communication
-            """
-            self.local_frontend = self.context.socket(zmq.XSUB)
-            self.local_frontend.bind("inproc://" + MessageProxy.INPROC_SUB_ID)
-            self.local_backend = self.context.socket(zmq.XPUB)
-            self.local_backend.bind("inproc://" + MessageProxy.INPROC_PUB_ID)
-            zmq.device(zmq.FORWARDER, self.local_frontend, self.local_backend)
-            """
-
-            self.initialized = True
-
-        except Exception as e:
-            print e
-
-        finally:
-            self.remote_frontend.close()
-            self.remote_backend.close()
-            self.local_backend.close()
-            self.local_frontend.close()
-            self.context.term()
+        self.initialized = True
 
     def _get_pub_addr(self, remote=True):
         if remote:

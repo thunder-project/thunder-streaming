@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 from tempfile import NamedTemporaryFile
 from subprocess import Popen
 import time
+import atexit
 
 
 class ThunderStreamingContext(ParamListener):
@@ -96,9 +97,12 @@ class ThunderStreamingContext(ParamListener):
         signal.signal(signal.SIGTERM, handler)
 
         # ZeroMQ messaging proxy
+        self.updaters = []
         self.message_proxy = MessageProxy()
         self.message_proxy.start()
         print "MessageProxy is running..."
+
+        atexit.register(self.destroy)
 
         self._reset_document()
         self._reinitialize()
@@ -125,6 +129,9 @@ class ThunderStreamingContext(ParamListener):
     def set_feeder_conf(self, feeder_conf):
         self.feeder_conf = feeder_conf
         self._update_env()
+
+    def add_updater(self, updater):
+        self.updaters.append(updater)
 
     def add_analysis(self, analysis):
 
@@ -235,6 +242,11 @@ class ThunderStreamingContext(ParamListener):
         spark_path = os.path.join(SPARK_HOME, "bin", "spark-submit")
         base_args = [spark_path, "--class", "org.project.thunder.streaming.util.launch.Launcher", full_jar]
         self.streamer_child = Popen(base_args)
+
+    def destroy(self):
+        print "In tssc.destroy..."
+        for updater in self.updaters:
+            updater.stop()
 
     def _handle_int(self):
         # self.sig_handler_lock.acquire()

@@ -12,10 +12,12 @@ class Updater(Thread):
 
     def __init__(self, tssc, pause=0):
         Thread.__init__(self)
-        self.stop = False
+        self.stop_flag = False
         # Amount of time to pause between each fetch
         self.pause = pause
         self.pub_client = tssc.get_message_proxy().get_publisher()
+        tssc.add_updater(self)
+        self.setDaemon(True)
 
     @abstractmethod
     def fetch_update(self):
@@ -27,7 +29,8 @@ class Updater(Thread):
         return (None, None)
 
     def stop(self):
-        self.stop = True
+        print "Stopping updater thread..."
+        self.stop_flag = True
 
     def run(self):
         """
@@ -35,7 +38,7 @@ class Updater(Thread):
 
         :return:
         """
-        while not self.stop:
+        while not self.stop_flag:
             tag, data = self.fetch_update()
             self.pub_client.publish(tag, data)
             sleep(self.pause)
