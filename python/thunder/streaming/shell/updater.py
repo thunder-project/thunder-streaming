@@ -11,6 +11,7 @@ class Updater(Thread):
     """
 
     def __init__(self, tssc, pause=0):
+        Thread.__init__(self)
         self.stop = False
         # Amount of time to pause between each fetch
         self.pause = pause
@@ -28,7 +29,7 @@ class Updater(Thread):
     def stop(self):
         self.stop = True
 
-    def start(self):
+    def run(self):
         """
         Starts retrieving updates. Will run until stop() is called
 
@@ -37,4 +38,4 @@ class Updater(Thread):
         while not self.stop:
             tag, data = self.fetch_update()
             self.pub_client.publish(tag, data)
-            sleep(self.paused)
+            sleep(self.pause)

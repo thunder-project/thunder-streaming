@@ -83,10 +83,10 @@ class ThunderStreamingContext(ParamListener):
 
         # Build setters for each existing run parameter
         for key in self.run_parameters.keys():
-            def param_setter(self, value):
-                self.run_parameters[key] = value
+            def param_setter(value):
+                self.run_parameters[key] = str(value)
                 self._update_env()
-            self.__dict__["set_"+key.lower()] = str(param_setter)
+            self.__dict__["set_"+key.lower()] = param_setter
 
         # Gracefully handle SIGINT and SIGTERM signals
         def handler(signum, stack):
@@ -97,9 +97,14 @@ class ThunderStreamingContext(ParamListener):
 
         # ZeroMQ messaging proxy
         self.message_proxy = MessageProxy()
+        self.message_proxy.start()
+        print "MessageProxy is running..."
 
         self._reset_document()
         self._reinitialize()
+
+    def get_message_proxy(self):
+        return self.message_proxy
 
     def _reset_document(self):
         # Document that will contain the XML specification
@@ -116,6 +121,10 @@ class ThunderStreamingContext(ParamListener):
         for (name, value) in self.run_parameters.items():
             if value:
                 os.putenv(name, value)
+
+    def set_feeder_conf(self, feeder_conf):
+        self.feeder_conf = feeder_conf
+        self._update_env()
 
     def add_analysis(self, analysis):
 

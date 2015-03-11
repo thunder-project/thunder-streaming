@@ -4,7 +4,6 @@ import org.project.thunder.streaming.util.ThunderStreamingContext
 
 import org.zeromq.ZMQ
 
-
 /**
  * Receives updates from an Analysis' corresponding Python Analysis (in the manager) using a simple TCP-based
  *

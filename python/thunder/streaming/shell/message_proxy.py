@@ -1,5 +1,6 @@
 
 import zmq
+from threading import Thread
 import settings
 
 
@@ -21,7 +22,7 @@ class Publisher(object):
         Publish a message to all self.tag subscribers
         """
         try:
-            self.pub_sock.send_multipart([tag, msg])
+            self.pub_sock.send_multipart([str(tag), str(msg)])
         except Exception as e:
             print e
 
@@ -68,7 +69,7 @@ class Subscriber(object):
         return Subscriber(context, addr, tag)
 
 
-class MessageProxy(object):
+class MessageProxy(Thread):
     """
     The MessageProxy wraps a ZeroMQ proxy server (XSUB socket) which forwards 'publish' messages from Python Analysis
     objects to subscribers (Scala Analysis objects) in the streamer process. Each message handled by the MessageManager is
@@ -88,6 +89,7 @@ class MessageProxy(object):
     DEFAULT_BIND_HOST = "localhost"
 
     def __init__(self, host=DEFAULT_BIND_HOST, num_threads=DEFAULT_NUM_THREADS):
+        Thread.__init__(self)
         self.initialized = False
         self.context = zmq.Context(num_threads)
         self.host = host
@@ -97,20 +99,24 @@ class MessageProxy(object):
         self.local_frontend = None
         self.local_backend = None
 
+    def run(self):
         try:
 
             # Launch two proxy sockets, one for remote communication, and one for in-process communication.
             self.remote_frontend = self.context.socket(zmq.XSUB)
-            self.remote_frontend.bind("tcp://*:" + MessageProxy.SUB_PORT)
+            self.remote_frontend.bind("tcp://*:" + str(MessageProxy.SUB_PORT))
             self.remote_backend = self.context.socket(zmq.XPUB)
-            self.remote_backend.bind("tcp://*:" + MessageProxy.PUB_PORT)
+            self.remote_backend.bind("tcp://*:" + str(MessageProxy.PUB_PORT))
             zmq.device(zmq.FORWARDER, self.remote_frontend, self.remote_backend)
 
+            # TODO Finish in-process communication
+            """
             self.local_frontend = self.context.socket(zmq.XSUB)
             self.local_frontend.bind("inproc://" + MessageProxy.INPROC_SUB_ID)
             self.local_backend = self.context.socket(zmq.XPUB)
             self.local_backend.bind("inproc://" + MessageProxy.INPROC_PUB_ID)
             zmq.device(zmq.FORWARDER, self.local_frontend, self.local_backend)
+            """
 
             self.initialized = True
 
@@ -118,22 +124,21 @@ class MessageProxy(object):
             print e
 
         finally:
-
             self.remote_frontend.close()
             self.remote_backend.close()
             self.local_backend.close()
-            self.local_frontend()
+            self.local_frontend.close()
             self.context.term()
 
     def _get_pub_addr(self, remote=True):
         if remote:
-            return "tcp://" + self.host + ":" + MessageProxy.PUB_PORT
+            return "tcp://" + self.host + ":" + str(MessageProxy.PUB_PORT)
         else:
             return "inproc://" + MessageProxy.INPROC_PUB_ID
 
     def _get_sub_addr(self, remote=True):
         if remote:
-            return "tcp://" + self.host + ":" + MessageProxy.SUB_PORT
+            return "tcp://" + self.host + ":" + str(MessageProxy.SUB_PORT)
         else:
             return "inproc://" + MessageProxy.INPROC_SUB_ID
 
@@ -143,7 +148,7 @@ class MessageProxy(object):
         :param remote: True if the client wishes to publish to remote services, False otherwise.
         :return: A Publisher object constructed using this MessageProxy's ZMQ Context
         """
-        return Publisher.get_publisher(self, self._get_pub_addr(remote))
+        return Publisher.get_publisher(self.context, self._get_pub_addr(remote))
 
     def get_subscriber(self, tag=None, remote=True):
         """
@@ -151,6 +156,6 @@ class MessageProxy(object):
         :param remote: True if the client wishes to subscribe to remote services, False otherwise.
         :return: A Subscriber object constructed using this MessageProxy's ZMQ Context
         """
-        return Subscriber.get_subscriber(self, self._get_sub_addr(remote), tag)
+        return Subscriber.get_subscriber(self.context, self._get_sub_addr(remote), tag)
 
 
