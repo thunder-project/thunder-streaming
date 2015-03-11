@@ -240,7 +240,8 @@ class ThunderStreamingContext(ParamListener):
         """
         full_jar = os.path.join(os.getcwd(), self.jar_name)
         spark_path = os.path.join(SPARK_HOME, "bin", "spark-submit")
-        base_args = [spark_path, "--class", "org.project.thunder.streaming.util.launch.Launcher", full_jar]
+        base_args = [spark_path, "--jars", THUNDER_STREAMING_PATH + "/scala/project/lib/jzmq-3.1.0.jar",
+                     "--class", "org.project.thunder.streaming.util.launch.Launcher", full_jar]
         self.streamer_child = Popen(base_args)
 
     def destroy(self):
