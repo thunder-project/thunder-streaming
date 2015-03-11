@@ -9,15 +9,13 @@ class Analysis(MappedScalaClass, ParamListener):
     """
 
     SUBSCRIPTION_PARAM = "dr_subscription"
-    SUB_HOST_PARAM = "dr_host"
-    SUB_PORT_PARAM = "dr_port"
+    FORWARDER_ADDR_PARAM = "dr_forwarder_addr"
 
     def __init__(self, identifier, full_name, param_dict):
         super(Analysis, self).__init__(identifier, full_name, param_dict)
         self.outputs = {}
-        # Put the host/port of the subscription forwarder into the parameters dict
-        self._param_dict[Analysis.SUB_HOST_PARAM] = settings.MASTER
-        self._param_dict[Analysis.SUB_PORT_PARAM] = settings.SUB_PORT
+        # Put the address of the subscription forwarder into the parameters dict
+        self._param_dict[Analysis.FORWARDER_ADDR_PARAM] = "tcp://" + settings.MASTER  + ":" + str(settings.SUB_PORT)
 
     def add_output(self, *outputs):
         for output in outputs:

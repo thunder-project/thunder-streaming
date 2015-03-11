@@ -92,7 +92,7 @@ abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext,
     updatableParams = updatableParams + (key -> value)
   }
 
-  def handleUpdate(update: String): Unit = {
+  override def handleUpdate(update: (String, String)): Unit = {
     // By default, just print the update
     println(update)
   }
@@ -103,7 +103,7 @@ abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext,
    * the updatableVars map.
    */
   def startListening(): Unit = {
-    val keySet = Set(DataReceiver.HOST, DataReceiver.PORT, DataReceiver.TAGS)
+    val keySet = Set(DataReceiver.FORWARDER_ADDR, DataReceiver.TAGS)
     val receiverParams = new AnalysisParams(params.param_map.filterKeys(keySet.contains(_)))
     val self = this
     new Thread(new Runnable {
