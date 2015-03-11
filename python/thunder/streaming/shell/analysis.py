@@ -31,8 +31,6 @@ class Analysis(MappedScalaClass, ParamListener):
         analysis.
         """
         existing_subs = self._param_dict.get(Analysis.SUBSCRIPTION_PARAM)
-        if not existing_subs:
-            existing_subs = [analysis]
         identifier = analysis if isinstance(analysis, str) else analysis.identifier
         if not existing_subs:
             new_sub = [identifier]
