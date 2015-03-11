@@ -24,6 +24,10 @@ libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.2.1" exclude
   ExclusionRule(organization = "org.apache.hadoop")
   )
 
+libraryDependencies += "org.apache.spark" % "spark-streaming-zeromq_2.10" % "1.2.1" excludeAll(
+  ExclusionRule(organization = "org.apache.hadoop")
+  )
+
 libraryDependencies += "colt" % "colt" % "1.2.0"
 
 libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0" % "test"
@@ -38,6 +42,4 @@ resolvers ++= Seq(
   "Akka Repository" at "http://repo.akka.io/releases/",
   "Spray Repository" at "http://repo.spray.cc/")
 
-resolvers += "Sonatype (releases)" at "https://oss.sonatype.org/content/repositories/releases/"
-
-libraryDependencies += "org.zeromq" %% "zeromq-scala-binding" % "0.0.6"
+test in assembly := {}
