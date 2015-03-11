@@ -30,4 +30,4 @@ NikitasFeederConf.set_poll_time(5)
 
 updater = ExampleUpdater(tssc, analysis1.identifier) 
 updater.start()
-tssc._start_streamer_child()
+tssc._start_streaming_child()
