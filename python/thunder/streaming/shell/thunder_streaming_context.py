@@ -61,6 +61,7 @@ class ThunderStreamingContext(ParamListener):
         self.doc = None
         self.state = None
         self.config_file = None
+        self.analyses = {}
 
         # The feeder script responsible for copying properly chunked output from one directory (usually the one
         # specified by the user) to the temporary directory being monitored by the Scala process (which is passed
@@ -117,6 +118,7 @@ class ThunderStreamingContext(ParamListener):
     def _reset_document(self):
         # Document that will contain the XML specification
         self.doc = ET.ElementTree(ET.Element("analyses"))
+        self._write_document()
 
     def _reinitialize(self):
 
@@ -144,6 +146,18 @@ class ThunderStreamingContext(ParamListener):
             print "You cannot add analyses after the service has been started. Call ThunderStreamingContext.stop() first"
             return
 
+        self.analyses[analysis.identifier] = analysis
+        # Set this TSSC as the ParamListener for this Analysis instance
+        analysis.set_param_listener(self)
+        self._write_document()
+
+    def remove_analysis(self, analysis):
+        if analysis.identifier in self.analyses:
+            del self.analyses[analysis.identifier]
+        self._reset_document()
+
+    def _write_document(self):
+
         def build_params(parent, param_dict):
             for (name, value) in param_dict.items():
                 # Shortest way to do this
@@ -153,13 +167,13 @@ class ThunderStreamingContext(ParamListener):
                     param_elem.set("name", name)
                     param_elem.set("value", v)
 
-        analysis_elem = ET.SubElement(self.doc.getroot(), "analysis")
-        name_elem = ET.SubElement(analysis_elem, "name")
-        name_elem.text = analysis.full_name
-        build_params(analysis_elem, analysis.get_parameters())
 
-        # Set this TSSC as the ParamListener for this Analysis instance
-        analysis.set_param_listener(self)
+        for analysis in self.analyses.values():
+
+            analysis_elem = ET.SubElement(self.doc.getroot(), "analysis")
+            name_elem = ET.SubElement(analysis_elem, "name")
+            name_elem.text = analysis.full_name
+            build_params(analysis_elem, analysis.get_parameters())
 
         # Write the configuration to a temporary file and record the name
         temp = NamedTemporaryFile(delete=False)
@@ -183,7 +197,6 @@ class ThunderStreamingContext(ParamListener):
             self.config_file.close()
             self.set_config_file_path(None)
         self._reset_document()
-        self.add_analysis(updated_obj)
 
     def _kill_children(self):
         self._kill_child(self.streamer_child, "Streaming server")

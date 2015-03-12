@@ -60,7 +60,7 @@ class SeriesFiltering1Analysis(tssc: ThunderStreamingContext, params: AnalysisPa
           }
           case _ => rdd
         }
-        println("Collected RDD: %s".format(newRdd.collect().toString))
+        println("Collected RDD: %s".format(newRdd.collect().mkString(",")))
       }
     }
     data
@@ -78,9 +78,13 @@ class SeriesFiltering2Analysis(tssc: ThunderStreamingContext, params: AnalysisPa
   def analyze(data: StreamingSeries): StreamingSeries = {
     val filteredData = data.filterOnKeys{ k => {
       val keySet = UpdatableParameters.getUpdatableParam("keySet")
+      println("keySet: %s".format(keySet.toString))
       keySet match {
           case Some(s) => {
             val keys: Set[Int] = JsonParser(s).convertTo[List[Int]].toSet[Int]
+            if (k == 0) {
+              println("k = %s and keys: %s".format(k.toString, keys.toString))
+            }
             (keys.isEmpty) || keys.contains(k)
           }
           case _ => true
