@@ -5,6 +5,8 @@ import org.project.thunder.streaming.rdds.StreamingData
 import scala.util.{Failure, Success, Try}
 import scala.xml.NodeSeq
 
+import scala.collection.mutable.HashMap
+
 import org.project.thunder.streaming.util.ThunderStreamingContext
 
 object Analysis {
@@ -81,10 +83,10 @@ abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext,
 
   // Mutable parameters that can be updated at runtime by the DataReceiver Thread
   // TODO: This should be made more generic (restricting the value type to String is too limiting)
-  var updatableParams = Map[String, String]()
-  def getUpdatableParam(key: String): String = updatableParams.getOrElse(key, "")
+  var updatableParams = HashMap[String, String]()
+  def getUpdatableParam(key: String): Option[String] = updatableParams.get(key)
   def setUpdatableParam(key: String, value: String): Unit = {
-    updatableParams = updatableParams + (key -> value)
+    updatableParams.put(key, value)
   }
 
   override def handleUpdate(update: (String, String)): Unit = {

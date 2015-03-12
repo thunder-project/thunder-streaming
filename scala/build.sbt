@@ -28,11 +28,11 @@ libraryDependencies += "colt" % "colt" % "1.2.0"
 
 libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0" % "test"
 
-libraryDependencies += "io.spray" %% "spray-json" % "1.2.5"
-
 libraryDependencies += "org.jblas" % "jblas" % "1.2.3"
 
 resolvers += "spray" at "http://repo.spray.io/"
+
+libraryDependencies += "io.spray" %%  "spray-json" % "1.3.1"
 
 resolvers ++= Seq(
   "Akka Repository" at "http://repo.akka.io/releases/",

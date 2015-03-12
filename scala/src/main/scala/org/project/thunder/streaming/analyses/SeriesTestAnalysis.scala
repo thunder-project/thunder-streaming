@@ -1,8 +1,13 @@
 package org.project.thunder.streaming.analyses
 
+import org.apache.spark.rdd.RDD
 import org.project.thunder.streaming.rdds.StreamingSeries
+
 import org.project.thunder.streaming.regression.StatefulLinearRegression
 import org.project.thunder.streaming.util.ThunderStreamingContext
+
+import spray.json._
+import DefaultJsonProtocol._
 
 abstract class SeriesTestAnalysis(tssc: ThunderStreamingContext, params: AnalysisParams)
   extends Analysis[StreamingSeries](tssc, params) {
@@ -30,6 +35,30 @@ class SeriesMeanAnalysis(tssc: ThunderStreamingContext, params: AnalysisParams)
     extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
     data.seriesMean()
+  }
+}
+
+class SeriesFilteringAnalysis(tssc: ThunderStreamingContext, params: AnalysisParams)
+    extends SeriesTestAnalysis(tssc, params) {
+
+  override def handleUpdate(update: (String, String)): Unit = {
+    setUpdatableParam("keySet", update._2)
+  }
+
+  def analyze(data: StreamingSeries): StreamingSeries = {
+    data.dstream.foreachRDD{ rdd: RDD[(Int, Array[Double])] => {
+        val keySet = getUpdatableParam("keySet")
+        val newRdd = keySet match {
+          case Some(k) => {
+            val keys: Set[Int] = JsonParser(k).convertTo[List[Int]].toSet[Int]
+            rdd.filter{ case (k, v) => keys.contains(k) }
+          }
+          case _ => rdd
+        }
+        println(newRdd.collect())
+      }
+    }
+    data
   }
 }
 

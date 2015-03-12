@@ -9,7 +9,7 @@ object ThunderStreamingContext {
   val NUM_ZMQ_THREADS = 1
 }
 
-class ThunderStreamingContext(ssc: StreamingContext) {
+class ThunderStreamingContext(val ssc: StreamingContext) {
 
   val checkpoint_dir = System.getenv("CHECKPOINT")
   println("Checkpoint directory: %s".format(checkpoint_dir))

@@ -1,4 +1,4 @@
-from thunder.streaming.shell.examples.example_updater import ExampleUpdater
+from thunder.streaming.shell.examples.random_updater import ExampleUpdater
 import os
 import glob
 import math

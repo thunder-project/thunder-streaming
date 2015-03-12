@@ -1,5 +1,5 @@
 from thunder.streaming.site.configurations import NikitasFeederConf
-from thunder.streaming.shell.examples.example_updater import ExampleUpdater
+from thunder.streaming.shell.examples.random_updater import ExampleUpdater
 
 NikitasFeederConf.set_behaviors_dir("/nobackup/freeman/andrew/nikitatest/ephysSplitted/")
 NikitasFeederConf.set_images_dir("/nobackup/freeman/andrew/nikitatest/raw/")

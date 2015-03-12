@@ -2,7 +2,7 @@ from thunder.streaming.shell.updater import Updater
 import random
 
 
-class ExampleUpdater(Updater):
+class RandomUpdater(Updater):
 
     def __init__(self, tssc, tag):
         Updater.__init__(self, tssc, pause=10)
