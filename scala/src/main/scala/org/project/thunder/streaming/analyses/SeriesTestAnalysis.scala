@@ -81,12 +81,7 @@ class SeriesFiltering2Analysis(tssc: ThunderStreamingContext, params: AnalysisPa
       keySet match {
           case Some(s) => {
             val keys: Set[Int] = JsonParser(s).convertTo[List[Int]].toSet[Int]
-            if (!keys.isEmpty) {
-              println("Checking if %s contains %s".format(keys.toString, k.toString))
-              keys.contains(k)
-            } else {
-              true
-            }
+            (keys.isEmpty) || keys.contains(k)
           }
           case _ => true
         }
