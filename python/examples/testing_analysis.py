@@ -1,4 +1,4 @@
-from thunder.streaming.shell.examples.random_updater import ExampleUpdater
+from thunder.streaming.shell.examples.filtering_updater import FilteringUpdater
 import os
 import glob
 import math
@@ -6,7 +6,7 @@ import shutil
 import random
 import time
 
-SAMPLE_DIR = "/Users/Andrew/Work/development/sample_data/streaming_test/" 
+SAMPLE_DIR = "/groups/freeman/home/osheroffa/sample_data/" 
 
 dirs = {
     "checkpoint": os.path.join(SAMPLE_DIR, "checkpoint"),
@@ -20,9 +20,9 @@ dirs = {
 run_params = { 
     "checkpoint_interval": 10000, 
     "hadoop_block_size": 1, 
-    "parallelism": 2, 
-    "master": "local[10]",
-    "batch_time": 20
+    "parallelism": 100, 
+    "master": "spark://h07u14.int.janelia.org:7077",
+    "batch_time": 10
 }
 
 feeder_params = { 
@@ -33,9 +33,9 @@ feeder_params = {
 
 test_data_params = { 
     "prefix": "input_",
-    "num_files": 10,
-    "approx_file_size": 5 ,
-    "records_per_file": 50000,
+    "num_files": 20,
+    "approx_file_size": 20 ,
+    "records_per_file": 80000,
     "copy_period": 10
 }
 
@@ -43,11 +43,15 @@ test_data_params = {
 # Analysis configuration stuff starts here
 ##########################################
 
-analysis1 = Analysis.SeriesMeanAnalysis(input=dirs['input'], output=dirs['output'], prefix="output", format="text") 
+analysis1 = Analysis.SeriesFiltering1Analysis(input=dirs['input'], output=dirs['output'], prefix="output", format="text") 
+analysis2 = Analysis.SeriesFiltering2Analysis(input=dirs['input'], output=dirs['output'], prefix="output", format="text") 
+
 tssc.add_analysis(analysis1)
+tssc.add_analysis(analysis2) 
+analysis2.receive_updates(analysis1)
 
 updaters = [
-    ExampleUpdater(tssc, analysis1.identifier),
+    FilteringUpdater(tssc, analysis1.identifier),
 ]
 
 ########################################
