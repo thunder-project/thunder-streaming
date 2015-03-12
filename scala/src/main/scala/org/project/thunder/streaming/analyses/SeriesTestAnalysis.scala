@@ -14,7 +14,6 @@ abstract class SeriesTestAnalysis(tssc: ThunderStreamingContext, params: Analysi
 
   def load(path: String): StreamingSeries = {
     val format = params.getSingleParam(SeriesTestAnalysis.FORMAT_KEY)
-    println("In load, decoding format: %s".format(format))
     tssc.loadStreamingSeries(path, inputFormat = format)
   }
 
@@ -60,7 +59,7 @@ class SeriesFiltering1Analysis(tssc: ThunderStreamingContext, params: AnalysisPa
           }
           case _ => rdd
         }
-        println("Collected RDD: %s".format(newRdd.collect().mkString(",")))
+        println("Collected RDD: %s".format(newRdd.take(20).mkString(",")))
       }
     }
     data
