@@ -88,9 +88,7 @@ class ThunderStreamingContext(ParamListener):
             def setter_builder(key):
                 def param_setter(value):
                     self.run_parameters[key] = str(value)
-                    print "In param_setter, setting: %s to %s" % (key, value)
                     self._update_env()
-                    print "run_parameters is now: %s" % self.run_parameters
                 return param_setter
             self.__dict__["set_"+key.lower()] = setter_builder(key)
 
