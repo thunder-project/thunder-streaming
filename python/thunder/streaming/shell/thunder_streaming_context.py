@@ -130,7 +130,6 @@ class ThunderStreamingContext(ParamListener):
     def _update_env(self):
         for (name, value) in self.run_parameters.items():
             if value:
-                print "PUTTING %s -> %s INTO ENV" % (name, value)
                 os.putenv(name, value)
 
     def set_feeder_conf(self, feeder_conf):

@@ -5,8 +5,19 @@ import math
 import shutil
 import random
 import time
+import signal
 
 SAMPLE_DIR = "/groups/freeman/home/osheroffa/sample_data/" 
+
+interrupted = False
+
+def int_handler(signum, stack): 
+    global interrupted
+    print "Test interrupted."
+    interrupted = True
+
+signal.signal(signal.SIGINT, int_handler) 
+signal.signal(signal.SIGTERM, int_handler)
 
 dirs = {
     "checkpoint": os.path.join(SAMPLE_DIR, "checkpoint"),
@@ -33,9 +44,9 @@ feeder_params = {
 
 test_data_params = { 
     "prefix": "input_",
-    "num_files": 20,
-    "approx_file_size": 20 ,
-    "records_per_file": 80000,
+    "num_files": 40,
+    "approx_file_size": 0.02 ,
+    "records_per_file": 10,
     "copy_period": 10
 }
 
@@ -81,7 +92,7 @@ def set_up_directories():
 def generate_test_series(dirs): 
     def write_file(directory, i): 
         file_path = os.path.join(directory, test_data_params['prefix'] + str(i))
-        print "file_path: %s" % file_path
+        print "Generating test series in %s..." % file_path
         with open(file_path, 'w') as output_file: 
             approx_size = float(test_data_params['approx_file_size'] * 1000000)
             series_len = int((approx_size / test_data_params['records_per_file']) / 8.0) - 1 
@@ -101,6 +112,8 @@ def copy_data():
         print "Copying %s to input directory..." % f
         shutil.copy(os.path.join(dirs['temp'], f), dirs['input'])
         time.sleep(copy_period)
+        if interrupted: 
+            break
 
 def generate_raw_test_data(): 
     pass
@@ -111,8 +124,6 @@ def make_feeder():
 def run(with_feeder=False): 
     attach_parameters()
     set_up_directories() 
-    for updater in updaters: 
-        updater.start()
     if with_feeder: 
         feeder = make_feeder()
         tssc.set_feeder_conf(feeder)
@@ -120,4 +131,7 @@ def run(with_feeder=False):
     else: 
         generate_test_series([dirs['temp']])
         tssc._start_streaming_child()
+        for updater in updaters: 
+            updater.start()
         copy_data()
+
