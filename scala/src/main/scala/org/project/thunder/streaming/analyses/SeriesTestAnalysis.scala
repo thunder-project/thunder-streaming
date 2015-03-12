@@ -38,27 +38,62 @@ class SeriesMeanAnalysis(tssc: ThunderStreamingContext, params: AnalysisParams)
   }
 }
 
-class SeriesFilteringAnalysis(tssc: ThunderStreamingContext, params: AnalysisParams)
+class SeriesFiltering1Analysis(tssc: ThunderStreamingContext, params: AnalysisParams)
     extends SeriesTestAnalysis(tssc, params) {
 
   override def handleUpdate(update: (String, String)): Unit = {
-    setUpdatableParam("keySet", update._2)
+    UpdatableParameters.setUpdatableParam("keySet", update._2)
+    println("SeriesFilteringAnalysis1 setting %s to %s".format("keySet", update._2))
   }
 
   def analyze(data: StreamingSeries): StreamingSeries = {
     data.dstream.foreachRDD{ rdd: RDD[(Int, Array[Double])] => {
-        val keySet = getUpdatableParam("keySet")
+        val keySet = UpdatableParameters.getUpdatableParam("keySet")
         val newRdd = keySet match {
           case Some(k) => {
             val keys: Set[Int] = JsonParser(k).convertTo[List[Int]].toSet[Int]
-            rdd.filter{ case (k, v) => keys.contains(k) }
+            if (!keys.isEmpty) {
+              rdd.filter { case (k, v) => keys.contains(k)}
+            } else {
+              rdd
+            }
           }
           case _ => rdd
         }
-        println(newRdd.collect())
+        println("Collected RDD: %s".format(newRdd.collect().toString))
       }
     }
     data
+  }
+}
+
+class SeriesFiltering2Analysis(tssc: ThunderStreamingContext, params: AnalysisParams)
+    extends SeriesTestAnalysis(tssc, params) {
+
+  override def handleUpdate(update: (String, String)): Unit = {
+    UpdatableParameters.setUpdatableParam("keySet", update._2)
+    println("SeriesFilteringAnalysis2 setting %s to %s".format("keySet", update._2))
+  }
+
+  def analyze(data: StreamingSeries): StreamingSeries = {
+    val filteredData = data.filterOnKeys{ k => {
+      val keySet = UpdatableParameters.getUpdatableParam("keySet")
+      keySet match {
+          case Some(s) => {
+            val keys: Set[Int] = JsonParser(s).convertTo[List[Int]].toSet[Int]
+            if (!keys.isEmpty) {
+              println("Checking if %s contains %s".format(keys.toString, k.toString))
+              keys.contains(k)
+            } else {
+              true
+            }
+          }
+          case _ => true
+        }
+      }
+    }
+    filteredData.print()
+    filteredData
   }
 }
 

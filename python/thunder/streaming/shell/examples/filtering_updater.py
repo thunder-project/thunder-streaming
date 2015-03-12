@@ -10,8 +10,10 @@ class FilteringUpdater(Updater):
     def __init__(self, tssc, tag):
         Updater.__init__(self, tssc, pause=10)
         self.tag = tag
-        self.key_range = [1, 2, 3, 4, 5]
+        self.send_count = 0
 
     def fetch_update(self):
-        print "Sending update: (%s, %s)" % (self.tag, str(self.key_range))
-        return self.tag, json.dumps(self.key_range)
+        key_range = [1, 2, 3, 4, 5] if self.send_count > 5 else []
+        print "Sending update: (%s, %s)" % (self.tag, str(key_range))
+        self.send_count += 1
+        return self.tag, json.dumps(key_range)

@@ -78,16 +78,18 @@ trait Updatable {
 }
 
 
+// Right now there's only ONE namespace for updatable parameters among all the analyses (this can be changed later)
+
+object UpdatableParameters extends Serializable {
+  // TODO: This should be made more generic (restricting the value type to String is too limiting)
+  val params = new HashMap[String, String]()
+  def getUpdatableParam(key: String): Option[String] = params.get(key)
+  def setUpdatableParam(key: String, value: String): Unit = params.put(key, value)
+}
+
+
 abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext, params: AnalysisParams)
   extends Updatable {
-
-  // Mutable parameters that can be updated at runtime by the DataReceiver Thread
-  // TODO: This should be made more generic (restricting the value type to String is too limiting)
-  var updatableParams = HashMap[String, String]()
-  def getUpdatableParam(key: String): Option[String] = updatableParams.get(key)
-  def setUpdatableParam(key: String, value: String): Unit = {
-    updatableParams.put(key, value)
-  }
 
   override def handleUpdate(update: (String, String)): Unit = {
     // By default, just print the update
