@@ -9,6 +9,7 @@ abstract class SeriesTestAnalysis(tssc: ThunderStreamingContext, params: Analysi
 
   def load(path: String): StreamingSeries = {
     val format = params.getSingleParam(SeriesTestAnalysis.FORMAT_KEY)
+    println("In load, decoding format: %s".format(format))
     tssc.loadStreamingSeries(path, inputFormat = format)
   }
 

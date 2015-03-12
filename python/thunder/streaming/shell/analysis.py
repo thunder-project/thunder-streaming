@@ -15,7 +15,7 @@ class Analysis(MappedScalaClass, ParamListener):
         super(Analysis, self).__init__(identifier, full_name, param_dict)
         self.outputs = {}
         # Put the address of the subscription forwarder into the parameters dict
-        self._param_dict[Analysis.FORWARDER_ADDR_PARAM] = "tcp://" + settings.MASTER  + ":" + str(settings.SUB_PORT)
+        self._param_dict[Analysis.FORWARDER_ADDR_PARAM] = "tcp://" + settings.MASTER  + ":" + str(settings.PUB_PORT)
         self.receive_updates(self)
 
     def add_output(self, *outputs):

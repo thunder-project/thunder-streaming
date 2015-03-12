@@ -10,4 +10,5 @@ class ExampleUpdater(Updater):
 
     def fetch_update(self):
         num = random.randrange(0, 100)
+        print "Sending update: (%s, %s)" % (self.tag, str(num))
         return self.tag, str(num)

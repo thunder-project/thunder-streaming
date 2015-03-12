@@ -116,15 +116,15 @@ class MessageProxy(object):
 
     def _get_pub_addr(self, remote=True):
         if remote:
-            return "tcp://" + self.host + ":" + str(MessageProxy.PUB_PORT)
-        else:
-            return "inproc://" + MessageProxy.INPROC_PUB_ID
-
-    def _get_sub_addr(self, remote=True):
-        if remote:
             return "tcp://" + self.host + ":" + str(MessageProxy.SUB_PORT)
         else:
             return "inproc://" + MessageProxy.INPROC_SUB_ID
+
+    def _get_sub_addr(self, remote=True):
+        if remote:
+            return "tcp://" + self.host + ":" + str(MessageProxy.PUB_PORT)
+        else:
+            return "inproc://" + MessageProxy.INPROC_PUB_ID
 
     def get_publisher(self, remote=True):
         """

@@ -11,7 +11,9 @@ object ThunderStreamingContext {
 
 class ThunderStreamingContext(ssc: StreamingContext) {
 
-  ssc.checkpoint(System.getenv("CHECKPOINT"))
+  val checkpoint_dir = System.getenv("CHECKPOINT")
+  println("Checkpoint directory: %s".format(checkpoint_dir))
+  ssc.checkpoint(checkpoint_dir)
 
   val context = ZMQ.context(ThunderStreamingContext.NUM_ZMQ_THREADS)
 
@@ -21,6 +23,8 @@ class ThunderStreamingContext(ssc: StreamingContext) {
       dataType: String = "short"): StreamingSeries = {
 
     val loader = new StreamingSeriesLoader(ssc)
+
+    println("inputFormat: %s".format(inputFormat))
 
     inputFormat match {
       case "text" => loader.fromText(dataPath)

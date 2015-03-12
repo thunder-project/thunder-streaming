@@ -117,6 +117,7 @@ abstract class Analysis[T <: StreamingData[_, _]](tssc: ThunderStreamingContext,
     val data = load(params.getSingleParam(Analysis.INPUT))
     val out = run(data)
     out.save(params.getSingleParam(Analysis.OUTPUT), params.getSingleParam(Analysis.PREFIX))
+    startListening()
   }
 
   def load(path: String): T

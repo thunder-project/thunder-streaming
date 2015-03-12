@@ -28,6 +28,7 @@ class ZeroMQReceiver(tssc: ThunderStreamingContext, listener: Updatable, params:
   sub_sock.connect(params.getSingleParam(DataReceiver.FORWARDER_ADDR))
   val subscribers = params.getParam(DataReceiver.TAGS)
   // Subscribe to each of the subscribers
+  println("%s subscribing to %s".format(this.toString, subscribers))
   subscribers.map{ s =>sub_sock.subscribe(s.getBytes()) }
 
   override def receive(): Unit = {
