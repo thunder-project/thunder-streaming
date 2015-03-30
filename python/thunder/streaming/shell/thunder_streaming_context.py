@@ -1,8 +1,8 @@
 from thunder.streaming.shell.analysis import Analysis
-from thunder.streaming.shell.output import Output
 from thunder.streaming.shell.param_listener import ParamListener
 from thunder.streaming.shell.message_proxy import MessageProxy
 from thunder.streaming.shell.settings import *
+from thunder.streaming.shell.converter import *
 
 import signal
 import re
@@ -77,8 +77,8 @@ class ThunderStreamingContext(ParamListener):
             'CONFIG_FILE_PATH': None,
             'CHECKPOINT': None,
             # TODO FOR TESTING ONLY
-            'PARALLELISM': '100',
-            'EXECUTOR_MEMORY': '100G',
+            'PARALLELISM': None,
+            'EXECUTOR_MEMORY': None,
             'CHECKPOINT_INTERVAL': '10000',
             'HADOOP_BLOCK_SIZE': '1'
         }
@@ -197,9 +197,16 @@ class ThunderStreamingContext(ParamListener):
 
     def _kill_children(self):
         self._kill_child(self.streamer_child, "Streaming server")
-        self._kill_child(self.feeder_child, "Feeder process")
+        if self.feeder_child:
+            self._kill_child(self.feeder_child, "Feeder process")
 
     def _start_children(self):
+
+        print "Starting the Analysis threads."
+        self._start_analyses()
+
+        print "Starting the updaters."
+        self._start_updaters()
 
         print "Starting the streaming analyses with run configuration:"
         print self
@@ -249,6 +256,14 @@ class ThunderStreamingContext(ParamListener):
 
         self.feeder_child = Popen(cmd)
 
+    def _start_analyses(self):
+        for analysis in self.analyses.values():
+            analysis.start()
+
+    def _start_updaters(self):
+        for updater in self.updaters:
+            updater.start()
+
     def _start_streaming_child(self):
         """
         Launch the Scala process with the XML file and additional analysis parameters as CLI arguments
@@ -257,7 +272,7 @@ class ThunderStreamingContext(ParamListener):
         spark_path = os.path.join(SPARK_HOME, "bin", "spark-submit")
         base_args = [spark_path, "--jars",
                      ",".join([os.path.join(THUNDER_STREAMING_PATH, "scala/project/lib/jeromq-0.3.4.jar"),
-                     os.path.join(THUNDER_STREAMING_PATH, "scala/project/lib/spray-json_2.11-1.3.1.jar")]),
+                     os.path.join(THUNDER_STREAMING_PATH, "scala/project/lib/spray-json_2.10-1.3.1.jar")]),
                      "--class", "org.project.thunder.streaming.util.launch.Launcher", full_jar]
         self.streamer_child = Popen(base_args)
 
@@ -267,8 +282,8 @@ class ThunderStreamingContext(ParamListener):
             updater.stop()
 
     def _handle_int(self):
-        # self.sig_handler_lock.acquire()
         if self.state == self.STARTED:
+            print "Calling self.stop() in ThunderStreamingContext"
             self.stop()
 
     def start(self):
@@ -288,16 +303,14 @@ class ThunderStreamingContext(ParamListener):
                 return
 
         self._start_children()
-
         self.state = self.STARTED
-        # Spin until a SIGTERM or a SIGINT is received
-        while self.state == self.STARTED:
-            pass
 
     def stop(self):
         if self.state != self.STARTED:
             print "You can only stop a job that's currently running. Call ThunderStreamingContext.start() first."
             return
+        for analysis in self.analyses.values():
+            analysis.stop()
         self._kill_children()
         # If execution reaches this point, then an analysis which was previously started has been stopped. Since it can
         # be restarted immediately, the new state is READY

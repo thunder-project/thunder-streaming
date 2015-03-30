@@ -23,6 +23,7 @@ object Launcher {
     val conf = new SparkConf().setMaster(master)
       .setAppName("ExampleLoadStreaming")
       .set("spark.default.parallelism", System.getenv("PARALLELISM"))
+      .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .set("spark.executor.memory", System.getenv("EXECUTOR_MEMORY"))
 
     val ssc = new StreamingContext(conf, Seconds(batchTime))

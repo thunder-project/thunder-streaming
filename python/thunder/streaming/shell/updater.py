@@ -16,7 +16,6 @@ class Updater(Thread):
         # Amount of time to pause between each fetch
         self.pause = pause
         self.pub_client = tssc.get_message_proxy().get_publisher()
-        tssc.add_updater(self)
         self.setDaemon(True)
 
     @abstractmethod

@@ -14,6 +14,5 @@ class FilteringUpdater(Updater):
 
     def fetch_update(self):
         key_range = [1, 2, 3, 4, 5] if self.send_count > 5 else []
-        print "Sending update: (%s, %s)" % (self.tag, str(key_range))
         self.send_count += 1
         return self.tag, json.dumps(key_range)
