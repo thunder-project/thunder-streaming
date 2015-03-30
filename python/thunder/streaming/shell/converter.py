@@ -143,7 +143,9 @@ class Series(Data):
 
     def _saveBinaryToPath(self, p, data):
         print "In _saveBinaryToPath, saving to: %s" % p
-        with open(p, 'wb') as f:
+        if data is None or len(data) == 0:
+            return
+        with open(p, 'w+') as f:
             f.write(data)
 
     def _convert(self, root, new_data):
