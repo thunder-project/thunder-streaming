@@ -6,12 +6,10 @@ The main entry point for the Python shell
 import optparse as opt
 import zipfile
 import sys
-import os
-import re
 from subprocess import call
 
 from thunder.streaming.shell.feeder_configuration import *
-from thunder.streaming.shell.thunder_streaming_context import ThunderStreamingContext
+from thunder.streaming.shell.thunder_streaming_context import *
 
 from thunder.streaming.shell.settings import *
 
