@@ -1,4 +1,7 @@
-from thunder.streaming.shell.examples.filtering_updater import FilteringUpdater
+from thunder.streaming.shell.examples.lightning_updater import LightningUpdater
+from lightning import Lightning
+import numpy as np
+from numpy import zeros 
 import os
 import glob
 import math
@@ -11,13 +14,16 @@ SAMPLE_DIR = "/groups/freeman/home/osheroffa/sample_data/"
 
 interrupted = False
 
-def int_handler(signum, stack): 
+int_handler = signal.getsignal(signal.SIGINT)
+term_handler = signal.getsignal(signal.SIGTERM)
+
+def new_handler(signum, stack): 
     global interrupted
-    print "Test interrupted."
+    int_handler(signum, stack)
     interrupted = True
 
-signal.signal(signal.SIGINT, int_handler) 
-signal.signal(signal.SIGTERM, int_handler)
+signal.signal(signal.SIGINT, new_handler) 
+signal.signal(signal.SIGTERM, new_handler)
 
 dirs = {
     "checkpoint": os.path.join(SAMPLE_DIR, "checkpoint"),
@@ -32,7 +38,7 @@ run_params = {
     "checkpoint_interval": 10000, 
     "hadoop_block_size": 1, 
     "parallelism": 100, 
-    "master": "spark://h07u14.int.janelia.org:7077",
+    "master": "spark://h07u02.int.janelia.org:7077",
     "batch_time": 10
 }
 
@@ -44,9 +50,9 @@ feeder_params = {
 
 test_data_params = { 
     "prefix": "input_",
-    "num_files": 40,
-    "approx_file_size": 0.02 ,
-    "records_per_file": 10,
+    "num_files": 10,
+    "approx_file_size": 10.0,
+    "records_per_file": 512 * 512,
     "copy_period": 10
 }
 
@@ -54,16 +60,27 @@ test_data_params = {
 # Analysis configuration stuff starts here
 ##########################################
 
-analysis1 = Analysis.SeriesFiltering1Analysis(input=dirs['input'], output=dirs['output'], prefix="output", format="text") 
-analysis2 = Analysis.SeriesFiltering2Analysis(input=dirs['input'], output=dirs['output'], prefix="output", format="text") 
+# TODO Need to insert the Lightning client here
+lgn = Lightning("http://kafka1.int.janelia.org:3000/")
+lgn.create_session('test')
+
+image_viz = lgn.image(zeros((512, 512)))
+line_viz = lgn.linestreaming(zeros((10,1)))
+
+analysis1 = Analysis.SeriesMeanAnalysis(input=dirs['input'], output=os.path.join(dirs['output'], 'images'), prefix="output", format="text").toImage(dims=(512,512)).toLightning(image_viz, only_viz=True)
+#analysis2 = Analysis.SeriesFiltering2Analysis(input=dirs['input'], output=os.path.join(dirs['output'], 'filtered_series'), prefix="output", format="text").toSeries().toLightning(line_viz, only_viz=True)
+
+#analysis2.receive_updates(analysis1)
 
 tssc.add_analysis(analysis1)
-tssc.add_analysis(analysis2) 
-analysis2.receive_updates(analysis1)
+#tssc.add_analysis(analysis2)
 
 updaters = [
-    FilteringUpdater(tssc, analysis1.identifier),
+    LightningUpdater(tssc, image_viz, analysis1.identifier)
 ]
+
+for updater in updaters: 
+    tssc.add_updater(updater)
 
 ########################################
 # Analysis configuration stuff ends here
@@ -127,11 +144,7 @@ def run(with_feeder=False):
     if with_feeder: 
         feeder = make_feeder()
         tssc.set_feeder_conf(feeder)
-        tssc.start()
-    else: 
-        generate_test_series([dirs['temp']])
-        tssc._start_streaming_child()
-        for updater in updaters: 
-            updater.start()
-        copy_data()
+    generate_test_series([dirs['temp']])
+    tssc.start()
+    copy_data()
 
