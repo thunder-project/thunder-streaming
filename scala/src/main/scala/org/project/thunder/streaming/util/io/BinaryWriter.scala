@@ -11,7 +11,7 @@ class BinaryWriter(directory: String, prefix: String)
 
   def extension = ".bin"
 
-  def write(part: Iterator[(Int, Array[Double])], file: File, withKeys: Boolean = true): Unit = {
+  def write(part: Iterator[(Int, Array[Double])], file: File, withKeys: Boolean = false): Unit = {
     val fos = new FileOutputStream(file)
     val channel = fos.getChannel
     part.foreach(item => {

@@ -5,6 +5,7 @@ import org.project.thunder.streaming.rdds.StreamingSeries
 
 import org.project.thunder.streaming.regression.StatefulLinearRegression
 import org.project.thunder.streaming.util.ThunderStreamingContext
+import org.apache.spark.SparkContext._
 
 import spray.json._
 import DefaultJsonProtocol._
@@ -33,7 +34,16 @@ object SeriesTestAnalysis {
 class SeriesMeanAnalysis(tssc: ThunderStreamingContext, params: AnalysisParams)
     extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
-    data.seriesMean()
+    val mean = data.seriesMean()
+    mean
+  }
+}
+
+class SeriesBatchMeanAnalysis(tssc: ThunderStreamingContext, params: AnalysisParams)
+    extends SeriesTestAnalysis(tssc, params) {
+  def analyze(data: StreamingSeries): StreamingSeries = {
+    val batchMean = data.dstream.map{ case (k, v) => (k, Array(v.reduce(_ + _) / v.size)) }
+    new StreamingSeries(batchMean)
   }
 }
 
@@ -42,7 +52,6 @@ class SeriesFiltering1Analysis(tssc: ThunderStreamingContext, params: AnalysisPa
 
   override def handleUpdate(update: (String, String)): Unit = {
     UpdatableParameters.setUpdatableParam("keySet", update._2)
-    println("SeriesFilteringAnalysis1 setting %s to %s".format("keySet", update._2))
   }
 
   def analyze(data: StreamingSeries): StreamingSeries = {
@@ -69,29 +78,57 @@ class SeriesFiltering1Analysis(tssc: ThunderStreamingContext, params: AnalysisPa
 class SeriesFiltering2Analysis(tssc: ThunderStreamingContext, params: AnalysisParams)
     extends SeriesTestAnalysis(tssc, params) {
 
+  val partitionSize = params.getSingleParam("partition_size").toInt
+  val dims = params.getSingleParam("dims").parseJson.convertTo[List[Int]]
+
+  def getKeysFromJson(keySet: Option[String], dims: List[Int]): List[Set[Int]]= {
+    val parsedKeys = keySet match {
+        case Some(s) => {
+          JsonParser(s).convertTo[List[List[List[Double]]]]
+        }
+        case _ => List()
+    }
+    val keys = parsedKeys.map(_.map(key => {
+        key.zipWithIndex.foldLeft(0){ case (sum, (dim, idx)) => (sum + (dims(idx) * dim)).toInt }
+    }).toSet[Int])
+    println("keys: %s, dims: %s".format(keys.toString, dims.toString))
+    keys
+  }
+
   override def handleUpdate(update: (String, String)): Unit = {
     UpdatableParameters.setUpdatableParam("keySet", update._2)
-    println("SeriesFilteringAnalysis2 setting %s to %s".format("keySet", update._2))
   }
 
   def analyze(data: StreamingSeries): StreamingSeries = {
-    val filteredData = data.filterOnKeys{ k => {
+    val filteredData = data.dstream.transform { rdd =>
+
       val keySet = UpdatableParameters.getUpdatableParam("keySet")
-      println("keySet: %s".format(keySet.toString))
-      keySet match {
-          case Some(s) => {
-            val keys: Set[Int] = JsonParser(s).convertTo[List[Int]].toSet[Int]
-            if (k == 0) {
-              println("k = %s and keys: %s".format(k.toString, keys.toString))
-            }
-            (keys.isEmpty) || keys.contains(k)
-          }
-          case _ => true
-        }
+
+      val keys = getKeysFromJson(keySet, dims)
+
+      val withIndices = keys.zipWithIndex
+      val setSizes = withIndices.foldLeft(Map[Int, Int]()) {
+        (curMap, s) => curMap + (s._2 -> s._1.size)
       }
+
+      // Reindex the (k,v) pairs with their set inclusion values as K
+      println("Before first RDD operation")
+      val mappedKeys = rdd.flatMap { case (k, v) =>
+        val setMatches = withIndices.map { case (set, i) => if (set.contains(k)) (i, v) else (-1, v)}
+        setMatches.filter { case (k, v) => k != -1}
+      }
+      println("After first RDD operation")
+
+      // For each set, compute the mean time series (pointwise addition divided by set size)
+      val sumSeries = mappedKeys.reduceByKey((arr1, arr2) => arr1.zip(arr2).map { case (v1, v2) => v1 + v2})
+      val meanSeries = sumSeries.map { case (idx, sumArr) => (idx, sumArr.map(x => x / setSizes(idx)))}
+
+      // Do some temporal averaging on the (spatial) mean time series
+      val avgSeries = meanSeries.map{ case (idx, meanArray) => (idx, meanArray.sliding(partitionSize).map(x => x.reduce(_+_) / x.size).toArray[Double]) }
+      println("avgSeries.first(): %s".format(avgSeries.first().toString))
+      avgSeries
     }
-    filteredData.print()
-    filteredData
+    new StreamingSeries(filteredData)
   }
 }
 
