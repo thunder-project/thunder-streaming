@@ -15,6 +15,7 @@ trait LocalSparkContext extends BeforeAndAfterEach with BeforeAndAfterAll { self
   @transient var sc: SparkContext = _
 
   override def beforeAll() {
+    System.getenv("CHECKPOINT_INTERVAL")
     InternalLoggerFactory.setDefaultFactory(new Slf4JLoggerFactory())
     super.beforeAll()
   }
