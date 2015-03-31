@@ -164,14 +164,12 @@ class Series(Data):
             return None
         self.dtype = dtype
 
-        #merged_series = np.array([], dtype=dtype)
         without_dims = filter(lambda x: not self.DIMS_PATTERN.search(x), new_data)
         sorted_files = sorted(without_dims, key=get_partition_num)
         bytes = ''
         for f in sorted_files:
             series = self._loadBinaryFromPath(f, dtype)
             bytes = bytes + series
-            #merged_series = np.append(merged_series, series)
         merged_series = np.frombuffer(bytes, dtype=dtype)
         reshaped_series = merged_series.reshape(-1, record_size)
         return reshaped_series
@@ -231,8 +229,7 @@ class Image(Series):
             return image_arr
 
     def _getPlaneData(self, data, plane):
-        plane_size = self.dims[0] * self.dims[1]
-        return data[plane * plane_size:(plane + 1) * plane_size]
+        return data[:,:,plane]
 
     @Data.output
     def toLightning(self, data, lgn, plane=0, only_viz=False):
