@@ -8,6 +8,8 @@ ivyXML := <dependency org="org.eclipse.jetty.orbit" name="javax.servlet" rev="3.
 <artifact name="javax.servlet" type="orbit" ext="jar"/>
 </dependency>
 
+parallelExecution in ThisBuild := false
+
 net.virtualvoid.sbt.graph.Plugin.graphSettings
 
 libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "1.0.4"
