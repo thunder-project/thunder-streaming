@@ -6,6 +6,7 @@ import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.Logging
+import org.project.thunder.streaming.rdds.StreamingSeries
 
 import scala.math.sqrt
 import cern.colt.matrix.{DoubleFactory1D, DoubleFactory2D, DoubleMatrix1D, DoubleMatrix2D}
@@ -28,7 +29,7 @@ class FittedModel(
 
   def std = sqrt(variance)
 
-  def R2 = 1 - sumOfSquaresError / sumOfSquaresTotal
+  def r2 = 1 - sumOfSquaresError / sumOfSquaresTotal
 
   def intercept = beta.toArray()(0)
 
@@ -49,15 +50,14 @@ class FittedModel(
 *
 * Features and labels from different batches
 * can have different lengths.
-*
-* See also: StreamingLinearRegression
 */
 class StatefulLinearRegression (
-  var featureKeys: Array[Int])
+  var featureKeys: Array[Int],
+  var selectedKeys: Array[Int])
   extends Serializable with Logging
 {
 
-  def this() = this(Array(0))
+  def this() = this(Array(0), Array(0))
 
   /** Set which indices that correspond to features. Default: Array(0). */
   def setFeatureKeys(featureKeys: Array[Int]): StatefulLinearRegression = {
@@ -65,7 +65,16 @@ class StatefulLinearRegression (
     this
   }
 
-  val runningLinearRegression = (input: Seq[Array[Double]], state: Option[FittedModel], features: Array[Double]) => {
+  /** Set which indices to use as features in regression. Default: Array(0). */
+  def setSelectedKeys(selectedKeys: Array[Int]): StatefulLinearRegression = {
+    this.selectedKeys = selectedKeys
+    this
+  }
+
+  val runningLinearRegression = (
+    input: Seq[Array[Double]],
+    state: Option[FittedModel],
+    features: Array[Double]) => {
 
     val y = input.foldLeft(Array[Double]()) { (acc, i) => acc ++ i}
     val currentCount = y.size
@@ -122,7 +131,8 @@ class StatefulLinearRegression (
       updatedState.Xy = newXy
       updatedState.XX = newXX
       updatedState.beta = newBeta
-      updatedState.sumOfSquaresTotal += currentSumOfSquaresTotal + delta * delta * (oldCount * currentCount) / (oldCount + currentCount)
+      updatedState.sumOfSquaresTotal += currentSumOfSquaresTotal +
+        delta * delta * (oldCount * currentCount) / (oldCount + currentCount)
       updatedState.sumOfSquaresError += term1 + term2 - term3 + term4
     }
 
@@ -130,11 +140,11 @@ class StatefulLinearRegression (
   }
 
 
-  def runStreaming(data: DStream[(Int, Array[Double])]): DStream[(Int, FittedModel)] = {
+  def fit(data: StreamingSeries): DStream[(Int, FittedModel)] = {
 
     var features = Array[Double]()
 
-    data.filter{case (k, _) => featureKeys.contains(k)}.foreachRDD{rdd =>
+    data.dstream.filter{case (k, _) => selectedKeys.contains(k)}.foreachRDD{rdd =>
         val batchFeatures = rdd.values.collect().flatten
         features = batchFeatures.size match {
           case 0 => Array[Double]()
@@ -142,9 +152,9 @@ class StatefulLinearRegression (
         }
     }
 
-    data.filter{case (k, _) => !featureKeys.contains(k)}.updateStateByKey{
-      (x, y) => runningLinearRegression(x, y, features)}
-  }
+    data.dstream.filter{case (k, _) => !featureKeys.contains(k)}.updateStateByKey{
+      (values, state) => runningLinearRegression(values, state, features)}
+    }
 
 }
 
@@ -163,64 +173,22 @@ object StatefulLinearRegression {
    *
    * @param input DStream of (Int, Array[Double]) keyed data point
    * @param featureKeys Array of keys associated with features
-   * @return DStream of (Int, LinearRegressionModel) with fitted regression models
+   * @return StreamingSeries with parameters of fitted regression models
    */
-  def trainStreaming(input: DStream[(Int, Array[Double])],
-            featureKeys: Array[Int]): DStream[(Int, FittedModel)] =
+  def run(
+    input: StreamingSeries,
+    featureKeys: Array[Int],
+    selectedKeys: Array[Int]): StreamingSeries =
   {
-    new StatefulLinearRegression().setFeatureKeys(featureKeys).runStreaming(input)
-  }
 
-  def main(args: Array[String]) {
-    if (args.length != 6) {
-      System.err.println(
-        "Usage: StatefulLinearRegression <master> <directory> <batchTime> <outputDirectory> <dims> <featureKeys>")
-      System.exit(1)
-    }
+    val output = new StatefulLinearRegression()
+      .setFeatureKeys(featureKeys)
+      .setSelectedKeys(selectedKeys)
+      .fit(input)
+      .mapValues(x => Array(x.r2) ++ x.beta.toArray)
 
-    val (master, directory, batchTime, outputDirectory, dims, features) = (
-      args(0), args(1), args(2).toLong, args(3),
-      args(4).drop(1).dropRight(1).split(",").map(_.trim.toInt),
-      Array(args(5).drop(1).dropRight(1).split(",").map(_.trim.toInt)))
+    new StreamingSeries(output)
 
-    val conf = new SparkConf().setMaster(master).setAppName("StatefulLinearRegression")
-
-    if (!master.contains("local")) {
-      conf.setSparkHome(System.getenv("SPARK_HOME"))
-          .setJars(List("target/scala-2.10/thunder_2.10-0.1.0.jar"))
-          .set("spark.executor.memory", "100G")
-          .set("spark.default.parallelism", "100")
-    }
-
-    /** Get feature keys with linear indexing */
-    val featureKeys = Keys.subToInd(features, dims)
-
-    /** Create Streaming Context */
-    val ssc = new StreamingContext(conf, Seconds(batchTime))
-    ssc.checkpoint(System.getenv("CHECKPOINT"))
-
-    /** Load streaming data */
-    //val data = LoadStreaming.fromTextWithKeys(ssc, directory, dims.size, dims)
-
-    /** Train Linear Regression models */
-    //val state = StatefulLinearRegression.trainStreaming(data, featureKeys)
-
-    /** Print output (for testing) */
-//    state.mapValues(x => "\n" + "mean: " + "%.5f".format(x.mean) +
-//                         "\n" + "count: " + "%.5f".format(x.count) +
-//                         "\n" + "variance: " + "%.5f".format(x.variance) +
-//                         "\n" + "beta: " + x.beta.toArray.mkString(",") +
-//                         "\n" + "R2: " + "%.5f".format(x.R2) +
-//                         "\n" + "SSE: " + "%.5f".format(x.sumOfSquaresError) +
-//                         "\n" + "SST: " + "%.5f".format(x.sumOfSquaresTotal) +
-//                         "\n" + "Xy: " + x.Xy.toArray.mkString(",")).print()
-
-    ///** Save output (for production) */
-    //val out = state.mapValues(x => Array(x.R2))
-    //Save.saveStreamingDataAsText(out, outputDirectory, Seq("r2"))
-
-    //ssc.start()
-    //ssc.awaitTermination()
   }
 
 }

@@ -1,7 +1,6 @@
 package org.project.thunder.streaming.rdds
 
 import org.scalatest.FunSuite
-import scala.collection.immutable.IndexedSeq
 import scala.util.Random
 
 import org.apache.spark.streaming.dstream.DStream

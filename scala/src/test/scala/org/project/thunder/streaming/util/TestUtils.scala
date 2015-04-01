@@ -1,4 +1,4 @@
-package thunder
+package org.project.thunder.streaming.util
 
 import org.scalatest.Assertions._
 
@@ -19,22 +19,27 @@ object TestUtils {
     v1.zip(v2).map{ case (a, b) => math.abs(a-b) }.max
   }
 
+  // L2 distance between two points
+  def distance2(v1: Array[Double], v2: Array[Double]): Double = {
+    v1.zip(v2).map{ case (a, b) => math.pow(a-b, 2) }.sum
+  }
+
   // Assert that two vectors are equal within tolerance EPSILON
   def assertEqual(v1: Double, v2: Double, epsilon: Double) {
-    def errorMessage = v1.toString + " did not equal " + v2.toString
+    def errorMessage = "\n" + v1.toString + " did not equal " + v2.toString
     assert(math.abs(v1-v2) <= epsilon, errorMessage)
   }
 
   // Assert that two vectors are equal within tolerance EPSILON
   def assertEqual(v1: Array[Double], v2: Array[Double], epsilon: Double) {
-    def errorMessage = prettyPrint(v1) + " did not equal " + prettyPrint(v2)
+    def errorMessage = "\n" + prettyPrint(v1) + " did not equal " + prettyPrint(v2)
     assert(v1.length == v2.length, errorMessage)
-    assert(distance1(v1, v2) <= epsilon, errorMessage)
+    assert(distance2(v1, v2) <= epsilon, errorMessage)
   }
 
   // Assert that two sets of points are equal, within EPSILON tolerance
   def assertSetsEqual(set1: Array[Array[Double]], set2: Array[Array[Double]], epsilon: Double) {
-    def errorMessage = prettyPrint(set1) + " did not equal " + prettyPrint(set2)
+    def errorMessage = "\n" + prettyPrint(set1) + " did not equal " + prettyPrint(set2)
     assert(set1.length == set2.length, errorMessage)
     for (v <- set1) {
       val closestDistance = set2.map(w => distance1(v, w)).min
