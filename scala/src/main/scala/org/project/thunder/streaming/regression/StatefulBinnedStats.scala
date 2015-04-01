@@ -32,7 +32,7 @@ class StatefulBinnedStats (
     this
   }
 
-  def run(data: StreamingSeries): DStream[(Int, StatCounterMixed)] = {
+  def fit(data: StreamingSeries): DStream[(Int, StatCounterMixed)] = {
 
     var features = Array[Double]()
 
@@ -69,7 +69,7 @@ object StatefulBinnedStats {
    * @param input StreamingSeries with keyed data
    * @return StreamingSeries with statistics
    */
-  def fit(
+  def run(
     input: StreamingSeries,
     featureKey: Int,
     featureCount: Int,
@@ -78,7 +78,7 @@ object StatefulBinnedStats {
     val output = new StatefulBinnedStats()
       .setFeatureKey(featureKey)
       .setFeatureCount(featureCount)
-      .run(input)
+      .fit(input)
       .mapValues(x => Array(x.r2, x.weightedMean(featureValues)))
 
     new StreamingSeries(output)
