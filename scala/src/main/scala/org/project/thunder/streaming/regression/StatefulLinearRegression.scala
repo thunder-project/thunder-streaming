@@ -76,6 +76,9 @@ class StatefulLinearRegression (
     state: Option[FittedModel],
     features: Array[Double]) => {
 
+    println("In runningLinearRegression, features: %s, input: %s".format(features.mkString(","),
+      input.map(_.mkString(","))))
+
     val y = input.foldLeft(Array[Double]()) { (acc, i) => acc ++ i}
     val currentCount = y.size
     val n = features.size
