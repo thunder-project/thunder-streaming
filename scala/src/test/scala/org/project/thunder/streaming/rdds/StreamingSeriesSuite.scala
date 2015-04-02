@@ -4,6 +4,7 @@ import org.scalatest.FunSuite
 import scala.util.Random
 
 import org.apache.spark.streaming.dstream.DStream
+import org.apache.spark.streaming._
 import org.apache.spark.streaming.TestSuiteBase
 
 class StreamingSeriesSuite extends FunSuite with TestSuiteBase {
