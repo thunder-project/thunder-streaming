@@ -15,7 +15,7 @@ import spray.json._
 import DefaultJsonProtocol._
 
 class StreamingSeries(val dstream: DStream[(Int, Array[Double])],
-                      val interval: Duration = Seconds(1000))
+                      val interval: Duration = Seconds(3000))
   extends StreamingData[Array[Double], StreamingSeries] {
 
   /** Compute a running estate of several statistics */
