@@ -3,6 +3,9 @@ from thunder.streaming.shell.analysis import Analysis
 from abc import abstractmethod
 from collections import OrderedDict
 import numpy as np
+from numpy import cumprod
+from scipy.signal import decimate
+from math import ceil
 import re
 import os
 import json
@@ -205,42 +208,56 @@ class Image(Series):
     Represents a 2 or 3 dimensional image
     """
 
-    def __init__(self, analysis, dims, clip):
+    def __init__(self, analysis, dims, clip, preslice):
         Series.__init__(self, analysis)
         self.dims = dims
         self.clip = clip
+        self.preslice = preslice
 
     @staticmethod
     @Data.converter
-    def toImage(analysis, dims=(512, 512, 4), clip=400):
+    def toImage(analysis, dims=(512, 512, 4), clip=400, preslice=None):
         """
         :param analysis: The analysis whose raw output will be parsed and converted into an in-memory image
         :return: An Image object
         """
-        return Image(analysis, dims, clip)
+        return Image(analysis, dims, clip, preslice)
 
     def _convert(self, root, new_data):
         series = Series._convert(self, root, new_data)
         if series is not None and len(series) != 0:
             # Remove the regressors
-            series = series[:-3]
+            if self.preslice:
+                series = series[self.preslice]
             # Sort the keys/values
             image_arr = series.clip(0, self.clip).reshape(self.dims)
+            print "_convert returning array of shape %s" % str(image_arr.shape)
             return image_arr
 
     def _getPlaneData(self, data, plane):
-        return data[:,:,plane]
+        return data[plane, :, :]
+
+    def _downsample(self, data, factor=4):
+        curData = data
+        numDims = len(data.shape)
+        for idx, dim in enumerate(data.shape):
+            curData = decimate(curData, int(max(1, ceil(factor ** (1.0 / numDims)))), axis=idx)
+        return curData
 
     @Data.output
-    def toLightning(self, data, lgn, plane=0, only_viz=False):
+    def toLightning(self, data, image_viz, image_dims, plane=0, only_viz=False):
         if data is None or len(data) == 0:
             return
+        print "In toLightning..., data.shape: %s" % str(data.shape)
         if len(self.dims) > 3 or len(self.dims) < 1:
             print "Invalid images dimensions (must be < 3 and >= 1)"
             return
         plane_data = self._getPlaneData(data, plane)
+        factor = float(cumprod(plane_data.shape)[-1]) / cumprod(image_dims)[-1]
+        #plane_data = self._downsample(plane_data, factor=factor)
+        print "Sending data with dims: %s to Lightning" % str(plane_data.shape)
         if only_viz:
-            lgn.update(plane_data)
+            image_viz.update(plane_data)
         else:
             # Do dashboard stuff here
             lgn.image(plane_data)
