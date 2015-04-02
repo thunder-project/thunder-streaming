@@ -91,7 +91,6 @@ class SeriesFiltering2Analysis(tssc: ThunderStreamingContext, params: AnalysisPa
     val keys = parsedKeys.map(_.map(key => {
         key.zipWithIndex.foldLeft(0){ case (sum, (dim, idx)) => (sum + (dims(idx) * dim)).toInt }
     }).toSet[Int])
-    println("keys: %s, dims: %s".format(keys.toString, dims.toString))
     keys
   }
 
@@ -112,12 +111,10 @@ class SeriesFiltering2Analysis(tssc: ThunderStreamingContext, params: AnalysisPa
       }
 
       // Reindex the (k,v) pairs with their set inclusion values as K
-      println("Before first RDD operation")
       val mappedKeys = rdd.flatMap { case (k, v) =>
         val setMatches = withIndices.map { case (set, i) => if (set.contains(k)) (i, v) else (-1, v)}
         setMatches.filter { case (k, v) => k != -1}
       }
-      println("After first RDD operation")
 
       // For each set, compute the mean time series (pointwise addition divided by set size)
       val sumSeries = mappedKeys.reduceByKey((arr1, arr2) => arr1.zip(arr2).map { case (v1, v2) => v1 + v2})
