@@ -74,24 +74,25 @@ class StatefulLinearRegression (
   val runningLinearRegression = (
     input: Seq[Array[Double]],
     state: Option[FittedModel],
-    features: Array[Double]) => {
+    features: Array[Array[Double]]) => {
 
     val y = input.foldLeft(Array[Double]()) { (acc, i) => acc ++ i}
     val currentCount = y.size
     val n = features.size
 
-    val updatedState = state.getOrElse(new FittedModel(0.0, 0.0, 0.0, 0.0, DoubleFactory2D.dense.make(2, 2),
-      DoubleFactory1D.dense.make(2), DoubleFactory1D.dense.make(2)))
+    val updatedState = state.getOrElse(new FittedModel(0.0, 0.0, 0.0, 0.0,
+      DoubleFactory2D.dense.make(1 + n, 1 + n), DoubleFactory1D.dense.make(1 + n),
+      DoubleFactory1D.dense.make(1 + n)))
 
     if ((currentCount != 0) & (n != 0)) {
 
       // append column of 1s
-      val X = DoubleFactory2D.dense.make(n, 2)
-      for (i <- 0 until n) {
+      val X = DoubleFactory2D.dense.make(currentCount, n + 1)
+      for (i <- 0 until currentCount) {
         X.set(i, 0, 1)
       }
-      for (i <- 0 until n ; j <- 1 until 2) {
-        X.set(i, j, features(i))
+      for (i <- 0 until currentCount ; j <- 1 until (n + 1)) {
+        X.set(i, j, features(j - 1)(i))
       }
 
       // create matrix version of y
@@ -142,12 +143,12 @@ class StatefulLinearRegression (
 
   def fit(data: StreamingSeries): DStream[(Int, FittedModel)] = {
 
-    var features = Array[Double]()
+    var features = Array[Array[Double]]()
 
     data.dstream.filter{case (k, _) => selectedKeys.contains(k)}.foreachRDD{rdd =>
-        val batchFeatures = rdd.values.collect().flatten
+        val batchFeatures = rdd.values.collect()
         features = batchFeatures.size match {
-          case 0 => Array[Double]()
+          case 0 => Array[Array[Double]]()
           case _ => batchFeatures
         }
     }
@@ -155,7 +156,6 @@ class StatefulLinearRegression (
     data.dstream.filter{case (k, _) => !featureKeys.contains(k)}.updateStateByKey{
       (values, state) => runningLinearRegression(values, state, features)}
     }
-
 }
 
 /**
