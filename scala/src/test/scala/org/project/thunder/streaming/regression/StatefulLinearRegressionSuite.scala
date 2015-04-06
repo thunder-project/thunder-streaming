@@ -15,7 +15,7 @@ abstract class RegressionSuite extends FunSuite with TestSuiteBase {
 
   override def maxWaitTimeMillis = 5000
 
-  var numBatches = 10
+  var numBatches = 20
   var numPoints = 10
   var numKeys = 5
   var intercept = 1.0 // intercept for linear model
@@ -119,6 +119,11 @@ abstract class RegressionSuite extends FunSuite with TestSuiteBase {
     // are the right features used?
     // is it ok to have different sets of featureKeys and selectedKeys
 
+  }
+
+  test("normalized betas") {
+    setup()
+    // output.last.map()
   }
 }
 

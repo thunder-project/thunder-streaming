@@ -1,6 +1,7 @@
 package org.project.thunder.streaming.regression
 
 import org.apache.spark.SparkConf
+
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.StreamingContext._
@@ -10,7 +11,7 @@ import org.project.thunder.streaming.rdds.StreamingSeries
 
 import scala.math.sqrt
 import cern.colt.matrix.{DoubleFactory1D, DoubleFactory2D, DoubleMatrix1D, DoubleMatrix2D}
-import cern.jet.math.Functions.{plus, minus, bindArg2, pow}
+import cern.jet.math.Functions.{plus, minus, bindArg2, pow, min, max}
 import cern.colt.matrix.linalg.Algebra.DEFAULT.{inverse, mult, transpose}
 
 import org.project.thunder.streaming.util.io.Keys
@@ -18,12 +19,13 @@ import org.project.thunder.streaming.util.io.Keys
 /** Class for representing parameters and sufficient statistics for a running linear regression model */
 class FittedModel(
    var count: Double,
-   var mean: Double,
-   var sumOfSquaresTotal: Double,
+   var mean: Double, var sumOfSquaresTotal: Double,
    var sumOfSquaresError: Double,
    var XX: DoubleMatrix2D,
    var Xy: DoubleMatrix1D,
-   var beta: DoubleMatrix1D) extends Serializable {
+   var beta: DoubleMatrix1D,
+   var betaMins: Array[Double],
+   var betaMaxes: Array[Double]) extends Serializable {
 
   def variance = sumOfSquaresTotal / (count - 1)
 
@@ -34,6 +36,8 @@ class FittedModel(
   def intercept = beta.toArray()(0)
 
   def weights = beta.toArray.drop(1)
+
+  def normalizedBetas = beta.toArray().zipWithIndex.map{ case (b, idx) => (b - betaMins(idx)) / (betaMaxes(idx) - betaMins(idx)) }
 
 }
 
@@ -78,20 +82,24 @@ class StatefulLinearRegression (
 
     val y = input.foldLeft(Array[Double]()) { (acc, i) => acc ++ i}
     val currentCount = y.size
-    val n = features.size
+    val numFeatures = features.size
+    // Include the intercept term
+    val n = numFeatures + 1
 
     val updatedState = state.getOrElse(new FittedModel(0.0, 0.0, 0.0, 0.0,
-      DoubleFactory2D.dense.make(1 + n, 1 + n), DoubleFactory1D.dense.make(1 + n),
-      DoubleFactory1D.dense.make(1 + n)))
+      DoubleFactory2D.dense.make(n, n), DoubleFactory1D.dense.make(n),
+      DoubleFactory1D.dense.make(n),
+      Array.fill(n)(Double.MaxValue),
+      Array.fill(n)(Double.MinValue)))
 
-    if ((currentCount != 0) & (n != 0)) {
+    if ((currentCount != 0) & (numFeatures != 0)) {
 
       // append column of 1s
-      val X = DoubleFactory2D.dense.make(currentCount, n + 1)
+      val X = DoubleFactory2D.dense.make(currentCount, n)
       for (i <- 0 until currentCount) {
         X.set(i, 0, 1)
       }
-      for (i <- 0 until currentCount ; j <- 1 until (n + 1)) {
+      for (i <- 0 until currentCount ; j <- 1 until n) {
         X.set(i, j, features(j - 1)(i))
       }
 
@@ -107,6 +115,8 @@ class StatefulLinearRegression (
       val oldXy = updatedState.Xy.copy
       val oldXX = updatedState.XX.copy
       val oldBeta = updatedState.beta
+      val oldMins = updatedState.betaMins
+      val oldMaxes = updatedState.betaMaxes
 
       // compute current estimates of all statistics
       val currentMean = y.foldLeft(0.0)(_+_) / currentCount
@@ -135,11 +145,16 @@ class StatefulLinearRegression (
       updatedState.sumOfSquaresTotal += currentSumOfSquaresTotal +
         delta * delta * (oldCount * currentCount) / (oldCount + currentCount)
       updatedState.sumOfSquaresError += term1 + term2 - term3 + term4
-    }
 
+      // update the ranges of the betas
+      for (i <- 0 until n) {
+        updatedState.betaMins(i) = min(oldMins(i), newBeta.get(i))
+        updatedState.betaMaxes(i) = max(oldMaxes(i), newBeta.get(i))
+      }
+
+    }
     Some(updatedState)
   }
-
 
   def fit(data: StreamingSeries): DStream[(Int, FittedModel)] = {
 
@@ -175,20 +190,24 @@ object StatefulLinearRegression {
    * @param featureKeys Array of keys associated with features
    * @return StreamingSeries with parameters of fitted regression models
    */
-  def run(
+  def runToSeries(
     input: StreamingSeries,
     featureKeys: Array[Int],
     selectedKeys: Array[Int]): StreamingSeries =
   {
+    val models = run(input, featureKeys, selectedKeys)
+    val onlyBetasAndR2 = models.mapValues(x => Array(x.r2) ++ x.beta.toArray)
+    new StreamingSeries(onlyBetasAndR2)
+  }
 
-    val output = new StatefulLinearRegression()
+  def run(
+    input: StreamingSeries,
+    featureKeys: Array[Int],
+    selectedKeys: Array[Int]): DStream[(Int, FittedModel)] = {
+
+    new StatefulLinearRegression()
       .setFeatureKeys(featureKeys)
       .setSelectedKeys(selectedKeys)
       .fit(input)
-      .mapValues(x => Array(x.r2) ++ x.beta.toArray)
-
-    new StreamingSeries(output)
-
   }
-
 }
