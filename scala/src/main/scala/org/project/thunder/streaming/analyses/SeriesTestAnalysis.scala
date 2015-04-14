@@ -142,7 +142,7 @@ class SeriesRegressionAnalysis(tssc: ThunderStreamingContext, params: AnalysisPa
     val featureKeys = ((totalSize - numRegressors) to (totalSize - 1)).toArray
     val startIdx = totalSize - numRegressors
     val selectedKeys = featureKeys.zipWithIndex.filter{ case (f, idx) => selected.contains(idx) }.map(_._1)
-    println("selectedKeys: %s".format(selectedKeys.mkString(",").toString))
+    println("selectedKeys: %s, featureKeys: %s".format(selectedKeys.mkString(","), featureKeys.mkString(",")))
     val regressionStream = StatefulLinearRegression.run(data, featureKeys, selectedKeys)
     regressionStream.checkpoint(data.interval)
     // For up to 2 regressors, convert betas and r2 into a color map (by using the betas as RGB weights and R2 as alpha)

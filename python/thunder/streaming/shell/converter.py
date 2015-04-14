@@ -230,6 +230,7 @@ class Image(Series):
             if self.preslice:
                 series = series[self.preslice]
             # Sort the keys/values
+            print "series.shape: %s" % str(series.shape)
             image_arr = series.clip(0, self.clip).reshape(self.dims)
             print "_convert returning array of shape %s" % str(image_arr.shape)
             return image_arr

@@ -16,6 +16,8 @@ import cern.colt.matrix.linalg.Algebra.DEFAULT.{inverse, mult, transpose}
 
 import org.project.thunder.streaming.util.io.Keys
 
+import scala.util.{Try, Success}
+
 /** Class for representing parameters and sufficient statistics for a running linear regression model */
 class FittedModel(
    var count: Double,
@@ -82,9 +84,14 @@ class StatefulLinearRegression (
 
     val y = input.foldLeft(Array[Double]()) { (acc, i) => acc ++ i}
     val currentCount = y.size
-    val numFeatures = features.size
+
+    // The number of expected features, and the number contained in the batch
+    val numFeatures = selectedKeys.size
+    val batchNumFeatures = features.size
+
     // Include the intercept term
     val n = numFeatures + 1
+    val nBatch = batchNumFeatures + 1
 
     val updatedState = state.getOrElse(new FittedModel(0.0, 0.0, 0.0, 0.0,
       DoubleFactory2D.dense.make(n, n), DoubleFactory1D.dense.make(n),
@@ -92,14 +99,14 @@ class StatefulLinearRegression (
       Array.fill(n)(Double.MaxValue),
       Array.fill(n)(Double.MinValue)))
 
-    if ((currentCount != 0) & (numFeatures != 0)) {
+    if ((currentCount != 0) & (batchNumFeatures != 0)) {
 
       // append column of 1s
       val X = DoubleFactory2D.dense.make(currentCount, n)
       for (i <- 0 until currentCount) {
         X.set(i, 0, 1)
       }
-      for (i <- 0 until currentCount ; j <- 1 until n) {
+      for (i <- 0 until currentCount ; j <- 1 until nBatch) {
         X.set(i, j, features(j - 1)(i))
       }
 
@@ -119,15 +126,21 @@ class StatefulLinearRegression (
       val oldMaxes = updatedState.betaMaxes
 
       // compute current estimates of all statistics
-      val currentMean = y.foldLeft(0.0)(_+_) / currentCount
-      val currentSumOfSquaresTotal = y.map(x => pow(x - currentMean, 2)).foldLeft(0.0)(_+_)
+      val currentMean = y.foldLeft(0.0)(_ + _) / currentCount
+      val currentSumOfSquaresTotal = y.map(x => pow(x - currentMean, 2)).foldLeft(0.0)(_ + _)
       val currentXy = mult(transpose(X), ymat)
       val currentXX = mult(transpose(X), X)
 
       // compute new values for X*y (the sufficient statistic) and new beta (needed for update equations)
       val newXX = oldXX.copy.assign(currentXX, plus)
       val newXy = updatedState.Xy.copy.assign(currentXy, plus)
-      val newBeta = mult(inverse(newXX), newXy)
+
+      // Inverting the XX matrix will fail if the matrix is singular, in which case we just invert oldXX
+      val invertedXX = Try(inverse(newXX))
+      val newBeta = invertedXX match {
+        case Success(inv) => mult(inv, newXy)
+        case _ => mult(inverse(oldXX), newXy)
+      }
 
       // compute terms for update equations
       val delta = currentMean - oldMean
@@ -147,11 +160,10 @@ class StatefulLinearRegression (
       updatedState.sumOfSquaresError += term1 + term2 - term3 + term4
 
       // update the ranges of the betas
-      for (i <- 0 until n) {
+      for (i <- 0 until nBatch) {
         updatedState.betaMins(i) = min(oldMins(i), newBeta.get(i))
         updatedState.betaMaxes(i) = max(oldMaxes(i), newBeta.get(i))
       }
-
     }
     Some(updatedState)
   }
