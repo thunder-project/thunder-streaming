@@ -13,22 +13,22 @@ import org.project.thunder.streaming.util.counters.{StatCounterMixed, StatUpdate
 /**
  * Stateful binned statistics
  */
-class StatefulBinnedStats (
+class StatefulBinnedRegression (
     var featureKey: Int,
-    var nfeatures: Int)
+    var leftEdges: Array[Double])
   extends Serializable with Logging {
 
-  def this() = this(0, 1)
+  def this() = this(0, Array(0.0))
 
   /** Set which indices that correspond to features. */
-  def setFeatureKey(featureKey: Int): StatefulBinnedStats = {
+  def setFeatureKey(featureKey: Int): StatefulBinnedRegression = {
     this.featureKey = featureKey
     this
   }
 
   /** Set the values associated with the to features. */
-  def setFeatureCount(nfeatures: Int): StatefulBinnedStats = {
-    this.nfeatures = nfeatures
+  def setLeftEdges(leftEdges: Array[Double]): StatefulBinnedRegression = {
+    this.leftEdges = leftEdges
     this
   }
 
@@ -46,7 +46,7 @@ class StatefulBinnedStats (
     }
 
     // update the stats for each key
-    data.dstream.updateStateByKey{(x, y) => StatUpdater.mixed(x, y, features, nfeatures)}
+    data.dstream.updateStateByKey{(x, y) => StatUpdater.mixed(x, y, features, leftEdges)}
 
   }
 
@@ -55,7 +55,7 @@ class StatefulBinnedStats (
 /**
  * Top-level methods for calling Stateful Binned Stats.
  */
-object StatefulBinnedStats {
+object StatefulBinnedRegression {
 
   /**
    * Compute running statistics on keyed data points in bins.
@@ -69,19 +69,27 @@ object StatefulBinnedStats {
    * @param input StreamingSeries with keyed data
    * @return StreamingSeries with statistics
    */
-  def run(
+  def runToSeries(
     input: StreamingSeries,
     featureKey: Int,
-    featureCount: Int,
-    featureValues: Array[Double]): StreamingSeries =
+    leftEdges: Array[Double]): StreamingSeries =
   {
-    val output = new StatefulBinnedStats()
+    val output = new StatefulBinnedRegression()
       .setFeatureKey(featureKey)
-      .setFeatureCount(featureCount)
+      .setLeftEdges(leftEdges)
       .fit(input)
-      .mapValues(x => Array(x.r2, x.weightedMean(featureValues)))
 
     new StreamingSeries(output)
   }
 
+  def run(
+     input: StreamingSeries,
+     featureKey: Int,
+     leftEdges: Array[Double]): DStream[(Int, StatCounterMixed)] = {
+
+    new StatefulBinnedRegression()
+      .setFeatureKey(featureKey)
+      .setLeftEdges(leftEdges)
+      .fit(input)
+  }
 }
