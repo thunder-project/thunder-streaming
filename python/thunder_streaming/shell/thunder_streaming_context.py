@@ -1,8 +1,8 @@
-from thunder.streaming.shell.analysis import Analysis
-from thunder.streaming.shell.param_listener import ParamListener
-from thunder.streaming.shell.message_proxy import MessageProxy
-from thunder.streaming.shell.settings import *
-from thunder.streaming.shell.converter import *
+from thunder_streaming.shell.analysis import Analysis
+from thunder_streaming.shell.param_listener import ParamListener
+from thunder_streaming.shell.message_proxy import MessageProxy
+from thunder_streaming.shell.settings import *
+from thunder_streaming.shell.converter import *
 
 import signal
 import re
@@ -274,7 +274,7 @@ class ThunderStreamingContext(ParamListener):
                      ",".join([os.path.join(THUNDER_STREAMING_PATH, "scala/project/lib/jeromq-0.3.4.jar"),
                      os.path.join(THUNDER_STREAMING_PATH, "scala/project/lib/spray-json_2.10-1.3.1.jar"),
                      os.path.join(THUNDER_STREAMING_PATH, "scala/project/lib/colt-1.2.0.jar")]),
-                     "--class", "org.project.thunder.streaming.util.launch.Launcher", full_jar]
+                     "--class", "org.project.thunder_streaming.util.launch.Launcher", full_jar]
         self.streamer_child = Popen(base_args)
 
     def destroy(self):

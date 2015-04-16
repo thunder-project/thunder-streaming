@@ -1,4 +1,4 @@
-from thunder.streaming.shell.updater import Updater
+from thunder_streaming.shell.updater import Updater
 import random
 
 

@@ -12,7 +12,7 @@ import time
 import sys
 import numpy as np
 
-from thunder.streaming.feeder.utils.logger import StreamFeederLogger as Logger
+from thunder_streaming.feeder.utils.logger import StreamFeederLogger as Logger
 
 
 _logger = Logger("feeder-feeder")

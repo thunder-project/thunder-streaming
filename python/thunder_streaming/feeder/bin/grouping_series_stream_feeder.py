@@ -47,9 +47,9 @@ import logging
 import os
 import sys
 
-from thunder.streaming.feeder.utils.logger import global_logger
-from thunder.streaming.feeder.core import build_filecheck_generators, runloop, get_parsing_functions
-from thunder.streaming.feeder.feeders import SyncSeriesFeeder
+from thunder_streaming.feeder.utils.logger import global_logger
+from thunder_streaming.feeder.core import build_filecheck_generators, runloop, get_parsing_functions
+from thunder_streaming.feeder.feeders import SyncSeriesFeeder
 
 
 def get_last_matching_directory(directory_path_pattern):

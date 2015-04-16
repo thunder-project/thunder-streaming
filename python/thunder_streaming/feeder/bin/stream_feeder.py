@@ -13,11 +13,11 @@ variable.
 import logging
 import sys
 
-from thunder.streaming.feeder.core import build_filecheck_generators, runloop
-from thunder.streaming.feeder.feeders import CopyAndMoveFeeder
+from thunder_streaming.feeder.core import build_filecheck_generators, runloop
+from thunder_streaming.feeder.feeders import CopyAndMoveFeeder
 
-from thunder.streaming.feeder.utils.logger import global_logger
-from thunder.streaming.feeder.utils.regex import RegexMatchToPredicate
+from thunder_streaming.feeder.utils.logger import global_logger
+from thunder_streaming.feeder.utils.regex import RegexMatchToPredicate
 
 
 def parse_options():

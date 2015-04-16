@@ -1,5 +1,5 @@
-from thunder.streaming.shell.mapped_scala_class import MappedScalaClass
-from thunder.streaming.shell.param_listener import ParamListener
+from thunder_streaming.shell.mapped_scala_class import MappedScalaClass
+from thunder_streaming.shell.param_listener import ParamListener
 import settings
 from threading import Thread
 import time

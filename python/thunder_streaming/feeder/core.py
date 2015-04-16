@@ -4,10 +4,10 @@ import errno
 import os
 import time
 
-from thunder.streaming.feeder.utils.filenames import getFilenamePostfix, getFilenamePrefix
-from thunder.streaming.feeder.utils.logger import global_logger
-from thunder.streaming.feeder.utils.regex import RegexMatchToQueueName, RegexMatchToTimepointString
-from thunder.streaming.feeder.utils.updating_walk import updating_walk as uw
+from thunder_streaming.feeder.utils.filenames import getFilenamePostfix, getFilenamePrefix
+from thunder_streaming.feeder.utils.logger import global_logger
+from thunder_streaming.feeder.utils.regex import RegexMatchToQueueName, RegexMatchToTimepointString
+from thunder_streaming.feeder.utils.updating_walk import updating_walk as uw
 
 
 def file_check_generator(source_dir, mod_buffer_time, max_files=-1, filename_predicate=None):

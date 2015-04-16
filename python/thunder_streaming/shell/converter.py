@@ -1,4 +1,4 @@
-from thunder.streaming.shell.analysis import Analysis
+from thunder_streaming.shell.analysis import Analysis
 
 from abc import abstractmethod
 from collections import OrderedDict

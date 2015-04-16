@@ -10,10 +10,10 @@ import shutil
 import tempfile
 import time
 
-from thunder.streaming.feeder.transpose import transpose_files, transpose_files_to_series, \
+from thunder_streaming.feeder.transpose import transpose_files, transpose_files_to_series, \
     transpose_files_to_linear_series
-from thunder.streaming.feeder.utils.filenames import getFilenamePostfix, getFilenamePrefix
-from thunder.streaming.feeder.utils.logger import global_logger
+from thunder_streaming.feeder.utils.filenames import getFilenamePostfix, getFilenamePrefix
+from thunder_streaming.feeder.utils.logger import global_logger
 
 
 class Feeder(object):
