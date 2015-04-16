@@ -121,7 +121,6 @@ def configure_context():
 
 # The following should be executed if the script is imported as a module and also if it's launched standalone
 tssc = configure_context()
-# Import the Analysis and Output objects so that they're available from the shell
+# Import the Analysis objects so that they're available from the shell
 from thunder_streaming.shell.analysis import Analysis
-from thunder_streaming.shell.output import Output
 print "\nAccess the global ThunderStreamingContext through the 'tssc' object"
