@@ -35,7 +35,7 @@ def find_jar(thunder_path=None):
     """
     # TODO: This regex might be too broad
     jar_regex = re.compile("^thunder-streaming.*\.jar")
-    ts_package_name = re.compile("^org\/project\/thunder\/streaming")
+    ts_package_name = re.compile("^org\/project\/thunder_streaming")
     matching_jar_names = []
     for root, dir, files in os.walk(thunder_path if thunder_path else "."):
         for file in files:
