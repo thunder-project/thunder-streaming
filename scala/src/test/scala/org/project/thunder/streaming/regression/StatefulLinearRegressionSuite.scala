@@ -11,7 +11,7 @@ import math.abs
 
 import org.project.thunder.streaming.util.TestUtils._
 
-abstract class RegressionSuite extends FunSuite with TestSuiteBase {
+abstract class LinearRegressionSuite extends FunSuite with TestSuiteBase {
 
   override def maxWaitTimeMillis = 5000
 
@@ -128,11 +128,11 @@ abstract class RegressionSuite extends FunSuite with TestSuiteBase {
 }
 
 
-class MultiFeatureRegressionSuite extends RegressionSuite {
+class MultiFeatureRegressionSuite extends LinearRegressionSuite {
   weights = Array(1.0, 2.0, 3.0)
 }
 
 
-class SingleFeatureRegressionSuite extends RegressionSuite {
+class SingleFeatureRegressionSuite extends LinearRegressionSuite {
   weights = Array(1.0)
 }
