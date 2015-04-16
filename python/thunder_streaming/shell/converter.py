@@ -2,6 +2,7 @@ from thunder.streaming.shell.analysis import Analysis
 
 from abc import abstractmethod
 from collections import OrderedDict
+from thunder import Colorize
 import numpy as np
 from numpy import cumprod
 from scipy.signal import decimate
@@ -69,6 +70,8 @@ class Data(object):
         self.analysis = analysis
         # Output functions are added to output_funcs with the @output decorator
         self.output_funcs = {}
+        # Transformation functions are applied to the input data before its passed to any output_funcs
+        self.transformation_funcs = []
 
     @staticmethod
     def output(func):
@@ -76,6 +79,13 @@ class Data(object):
             self.output_funcs[func.func_name] = lambda data: func(self, data, *args, **kwargs)
             return self.analysis
         return add_to_output
+
+    @staticmethod
+    def transformation(func):
+        def add_to_transformations(self, *args, **kwargs):
+            self.transformation_funcs.append(lambda data: func(self, data, *args, **kwargs))
+            return self
+        return add_to_transformations
 
     @staticmethod
     def converter(func):
@@ -238,12 +248,17 @@ class Image(Series):
     def _getPlaneData(self, data, plane):
         return data[plane, :, :]
 
-    def _downsample(self, data, factor=4):
+    @Data.transformation
+    def downsample(self, data, factor=4):
         curData = data
         numDims = len(data.shape)
         for idx, dim in enumerate(data.shape):
             curData = decimate(curData, int(max(1, ceil(factor ** (1.0 / numDims)))), axis=idx)
         return curData
+
+    @Data.transformation
+    def colorize(self, data, cmap="rainbow", scale=1, vmin=0, vmax=30):
+        return Colorize(cmap=cmap, scale=scala, vmin=vmin, vmax=vmax).transform(data)
 
     @Data.output
     def toLightning(self, data, image_viz, image_dims, plane=0, only_viz=False):
