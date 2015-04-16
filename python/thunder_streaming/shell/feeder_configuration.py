@@ -5,7 +5,7 @@ from itertools import chain
 from collections import OrderedDict
 
 THUNDER_STREAMING_PATH = os.environ.get("THUNDER_STREAMING_PATH")
-FEEDER_DIR = "python/thunder/streaming/feeder/bin/"
+FEEDER_DIR = "python/thunder_streaming/feeder/bin/"
 GSS_FEEDER_PATH = os.path.join(THUNDER_STREAMING_PATH, FEEDER_DIR, "grouping_series_stream_feeder.py")
 SS_FEEDER_PATH = os.path.join(THUNDER_STREAMING_PATH, FEEDER_DIR, "series_stream_feeder.py")
 
