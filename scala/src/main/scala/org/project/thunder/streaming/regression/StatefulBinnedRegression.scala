@@ -78,6 +78,7 @@ object StatefulBinnedRegression {
       .setFeatureKey(featureKey)
       .setLeftEdges(leftEdges)
       .fit(input)
+      .map{ case (idx, model) => (idx, Array[Double](model.weightedMean(leftEdges))) }
 
     new StreamingSeries(output)
   }
