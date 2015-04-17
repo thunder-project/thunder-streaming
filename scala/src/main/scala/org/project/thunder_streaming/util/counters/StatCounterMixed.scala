@@ -15,11 +15,11 @@ case class StatCounterMixed (var counter: StatCounter, var counterArray: StatCou
     1 - counterArray.combinedVariance / counter.variance
   }
 
-  def weightedMean(featureValues: Array[Double]): Double = {
+  def weightedMean(binCenters: Array[Double]): Double = {
     val means = counterArray.mean
     val pos = means.map(x => (x - counter.mean) / counter.mean).map{x => if (x < 0) 0 else x}
     val weights = pos.map(x => x / pos.sum)
-    weights.zip(featureValues).map{case (x,y) => x * y}.sum
+    weights.zip(binCenters).map{case (x,y) => x * y}.sum
   }
 
 }

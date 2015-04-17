@@ -30,8 +30,8 @@ object StatUpdater {
       val pairs = binVector.zip(values)
       val grouped = pairs.groupBy{case (k,v) => k}
 
-      // get data from each bin, ignoring the 0 bin
-      val binnedData = Range(1, numBins + 1).map{ ind => if (grouped.contains(ind)) {
+      // get data from each bin, ignoring the 0 bin and the last bin
+      val binnedData = Range(1, numBins).map{ ind => if (grouped.contains(ind)) {
         grouped(ind).map{ case (k,v) => v}
       } else {
         Array[Double]()
@@ -39,7 +39,7 @@ object StatUpdater {
       }.toArray
 
       // get all data, ignoring the 0 bin
-      val all = pairs.filter{case (k,v) => k != 0}.map{case (k,v) => v}
+      val all = pairs.filter{case (k,v) => k != 0 && k != numBins}.map{case (k,v) => v}
 
       // update the combined stat counter
       updatedState.counter.merge(all)

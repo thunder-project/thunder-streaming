@@ -32,22 +32,28 @@ class StatefulBinnedRegression (
     this
   }
 
+
+
   def featuresToBins(features: Array[Double], leftEdges: Array[Double]): Array[Int] = {
     val partialBins = leftEdges.sorted.zipWithIndex
-    // A final right-most edge is added, which also maps to bin 0
-    val allBins = partialBins :+ (Double.MaxValue, 0)
-    for (feature <- features; bin <- allBins; if feature < bin._1 ) yield bin._2
+    // A final right-most edge is added, which maps to bin N
+    val allBins = partialBins :+ (Double.MaxValue, partialBins.size)
+    val minBins = features.map{ f => (f, allBins.filter{ case (n, idx) => f < n }) }
+                          .map{ case (f, bins) => bins.map{ case (n, idx) => idx }.min }
+    println("minBins: %s".format(minBins.mkString(",")))
+    minBins
   }
 
   def fit(data: StreamingSeries): DStream[(Int, StatCounterMixed)] = {
 
     var features = Array[Double]()
 
-    // N left bin edges correspond to N - 1 bins of interest total (not including the 0 bin)
+    // N left bin edges correspond to N - 1 bins of interest total (not including the 0 bin and the
+    // Nth bin)
     val numBins = leftEdges.size - 1
 
     // For each value in the feature vector, compute its bin
-    val binVector = featuresToBins(features, leftEdges)
+    var binVector = featuresToBins(features, leftEdges)
 
     // extract the bin labels
     data.dstream.filter{case (k, _) => featureKey == k}.foreachRDD{rdd =>
@@ -57,6 +63,7 @@ class StatefulBinnedRegression (
         case _ => batchFeatures
       }
       println("features: %s".format(features.mkString(",")))
+      binVector = featuresToBins(features, leftEdges)
     }
 
     // update the stats for each key
@@ -106,5 +113,11 @@ object StatefulBinnedRegression {
       .setFeatureKey(featureKey)
       .setLeftEdges(leftEdges)
       .fit(input)
+  }
+
+  def binCenters(edges: Array[Double]): Array[Double] = {
+    val sortedEdges = edges.sorted
+    val binPairs = sortedEdges.zip(sortedEdges.tail)
+    binPairs.map{ case (b1, b2) => b1 + ((b1 - b2) / 2.0)}
   }
 }
