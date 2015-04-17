@@ -248,9 +248,6 @@ class Image(Series):
             print "_convert returning array of shape %s" % str(image_arr.shape)
             return image_arr
 
-    def _getPlaneData(self, data, plane):
-        return data[plane, :, :]
-
     @Data.transformation
     def downsample(self, data, factor=4):
         curData = data
@@ -263,21 +260,22 @@ class Image(Series):
     def colorize(self, data, cmap="rainbow", scale=1, vmin=0, vmax=30):
         return Colorize(cmap=cmap, scale=scale, vmin=vmin, vmax=vmax).transform(data)
 
+    @Data.transformation
+    def getPlane(self, data, plane):
+        return data[plane, :, :]
+
     @Data.output
-    def toLightning(self, data, image_viz, image_dims, plane=0, only_viz=False):
+    def toLightning(self, data, image_viz, image_dims, only_viz=False):
         if data is None or len(data) == 0:
             return
         print "In toLightning..., data.shape: %s" % str(data.shape)
         if len(self.dims) > 3 or len(self.dims) < 1:
             print "Invalid images dimensions (must be < 3 and >= 1)"
             return
-        plane_data = self._getPlaneData(data, plane)
-        factor = float(cumprod(plane_data.shape)[-1]) / cumprod(image_dims)[-1]
-        #plane_data = self._downsample(plane_data, factor=factor)
-        print "Sending data with dims: %s to Lightning" % str(plane_data.shape)
+        print "Sending data with dims: %s to Lightning" % str(data.shape)
         if only_viz:
-            image_viz.update(plane_data)
+            image_viz.update(data)
         else:
             # Do dashboard stuff here
-            lgn.image(plane_data)
+            lgn.image(data)
 

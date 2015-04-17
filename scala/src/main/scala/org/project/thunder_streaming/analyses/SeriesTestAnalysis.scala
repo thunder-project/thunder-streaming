@@ -177,7 +177,7 @@ class SeriesBinnedRegressionAnalysis(tssc: ThunderStreamingContext, params: Anal
     val regressionStream = StatefulBinnedRegression.run(data, selectedKey, edges)
     regressionStream.checkpoint(data.interval)
     new StreamingSeries(regressionStream.map{ case (int, mixedCounter) => {
-      (int, Array[Double](mixedCounter.r2)) }})
+      (int, Array[Double](mixedCounter.weightedMean(edges))) }})
   }
 }
 
