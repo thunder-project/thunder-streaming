@@ -180,7 +180,7 @@ class SeriesBinnedRegressionAnalysis(tssc: ThunderStreamingContext, params: Anal
     val binCenters = StatefulBinnedRegression.binCenters(edges)
     val meanMap = regressionStream.map{ case (int, mixedCounter) => {
      (int, Array[Double](mixedCounter.weightedMean(binCenters)))} }
-    new StreamingSeries(r2Map)
+    new StreamingSeries(meanMap)
   }
 }
 

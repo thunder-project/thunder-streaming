@@ -32,8 +32,6 @@ class StatefulBinnedRegression (
     this
   }
 
-
-
   def featuresToBins(features: Array[Double], leftEdges: Array[Double]): Array[Int] = {
     val partialBins = leftEdges.sorted.zipWithIndex
     // A final right-most edge is added, which maps to bin N
