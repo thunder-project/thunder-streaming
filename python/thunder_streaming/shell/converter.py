@@ -107,8 +107,11 @@ class Data(object):
 
     def handle_new_data(self, root, new_data):
         converted = self._convert(root, new_data)
+        transformed = converted
+        for func in self.transformation_funcs:
+            transformed = func(transformed)
         for func in self.output_funcs.values():
-            func(converted)
+            func(transformed)
 
     def start(self):
         self.analysis.start()
@@ -258,7 +261,7 @@ class Image(Series):
 
     @Data.transformation
     def colorize(self, data, cmap="rainbow", scale=1, vmin=0, vmax=30):
-        return Colorize(cmap=cmap, scale=scala, vmin=vmin, vmax=vmax).transform(data)
+        return Colorize(cmap=cmap, scale=scale, vmin=vmin, vmax=vmax).transform(data)
 
     @Data.output
     def toLightning(self, data, image_viz, image_dims, plane=0, only_viz=False):

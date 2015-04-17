@@ -32,9 +32,22 @@ class StatefulBinnedRegression (
     this
   }
 
+  def featuresToBins(features: Array[Double], leftEdges: Array[Double]): Array[Int] = {
+    val partialBins = leftEdges.sorted.zipWithIndex
+    // A final right-most edge is added, which also maps to bin 0
+    val allBins = partialBins :+ (Double.MaxValue, 0)
+    for (feature <- features; bin <- allBins; if feature < bin._1 ) yield bin._2
+  }
+
   def fit(data: StreamingSeries): DStream[(Int, StatCounterMixed)] = {
 
     var features = Array[Double]()
+
+    // N left bin edges correspond to N - 1 bins of interest total (not including the 0 bin)
+    val numBins = leftEdges.size - 1
+
+    // For each value in the feature vector, compute its bin
+    val binVector = featuresToBins(features, leftEdges)
 
     // extract the bin labels
     data.dstream.filter{case (k, _) => featureKey == k}.foreachRDD{rdd =>
@@ -43,10 +56,11 @@ class StatefulBinnedRegression (
         case 0 => Array[Double]()
         case _ => batchFeatures
       }
+      println("features: %s".format(features.mkString(",")))
     }
 
     // update the stats for each key
-    data.dstream.updateStateByKey{(x, y) => StatUpdater.mixed(x, y, features, leftEdges)}
+    data.dstream.updateStateByKey{(x, y) => StatUpdater.mixed(x, y, numBins, binVector)}
 
   }
 

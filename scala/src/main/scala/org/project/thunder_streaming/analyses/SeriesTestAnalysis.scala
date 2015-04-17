@@ -138,7 +138,7 @@ class SeriesLinearRegressionAnalysis(tssc: ThunderStreamingContext, params: Anal
 
   def analyze(data: StreamingSeries): StreamingSeries = {
 
-    val totalSize = dims.foldLeft(1)(_ * _)
+    val totalSize = dims.foldLeft(1)(_ * _) + 2
     // For now, assume the regressors are the final numRegressors keys
     val featureKeys = ((totalSize - numRegressors) to (totalSize - 1)).toArray
     val startIdx = totalSize - numRegressors
@@ -166,7 +166,7 @@ class SeriesBinnedRegressionAnalysis(tssc: ThunderStreamingContext, params: Anal
 
   def analyze(data: StreamingSeries): StreamingSeries = {
 
-    val totalSize = dims.foldLeft(1)(_ * _)
+    val totalSize = dims.foldLeft(1)(_ * _) + 2
     // For now, assume the regressors are the final numRegressors keys
     val featureKeys = ((totalSize - numRegressors) to (totalSize - 1)).toArray
     val startIdx = totalSize - numRegressors
@@ -177,7 +177,7 @@ class SeriesBinnedRegressionAnalysis(tssc: ThunderStreamingContext, params: Anal
     val regressionStream = StatefulBinnedRegression.run(data, selectedKey, edges)
     regressionStream.checkpoint(data.interval)
     new StreamingSeries(regressionStream.map{ case (int, mixedCounter) => {
-      (int, Array[Double](mixedCounter.weightedMean(edges))) }})
+      (int, Array[Double](mixedCounter.r2)) }})
   }
 }
 
@@ -250,6 +250,8 @@ class SeriesFilteringRegressionAnalysis(tssc: ThunderStreamingContext, params: A
 class SeriesNoopAnalysis(tssc: ThunderStreamingContext, params: AnalysisParams)
     extends SeriesTestAnalysis(tssc, params) {
   def analyze(data: StreamingSeries): StreamingSeries = {
+    data.dstream.filter{ case (k, v) => k == (512 * 512 * 4 + 2 - 1) }
+        .map{ case (k, v) => (k, v.mkString(",")) }.print()
     data
   }
 }
