@@ -262,6 +262,8 @@ class Image(Series):
 
     @Data.transformation
     def getPlane(self, data, plane):
+        if data is None or len(data) == 0:
+            return None
         return data[plane, :, :]
 
     @Data.output
