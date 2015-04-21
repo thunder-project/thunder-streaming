@@ -36,7 +36,7 @@ abstract class LinearRegressionSuite extends FunSuite with TestSuiteBase {
   }
 
   def setup(model: StatefulLinearRegression = getDefaultModel()) {
-    val input = RegressionStreamGenerator(
+    val input = LinearRegressionStreamGenerator(
       intercept, weights, rand, numBatches, numPoints, numKeys, noise)
 
     val ssc = setupStreams(input, (inputDStream: DStream[(Int, Array[Double])]) => {
@@ -47,7 +47,7 @@ abstract class LinearRegressionSuite extends FunSuite with TestSuiteBase {
     output = runStreams(ssc, numBatches, numBatches)
   }
 
-  def RegressionStreamGenerator(
+  def LinearRegressionStreamGenerator(
     intercept: Double,
     weights: Array[Double],
     rand: Random,
@@ -111,6 +111,7 @@ abstract class LinearRegressionSuite extends FunSuite with TestSuiteBase {
     val worstR2 = getR2s(output).sum
 
     assertEqual(perfectR2, output.last.length, 0.0001)
+    assert(perfectR2 > worseR2)
     assert(worseR2 > worstR2)
   }
 
