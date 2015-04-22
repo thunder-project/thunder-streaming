@@ -95,7 +95,10 @@ class Data(object):
         """
         def add_output(analysis, **kwargs):
             output = func(analysis, **kwargs)
-            analysis.outputs.append(output)
+            if isinstance(output, list):
+                analysis.outputs.extend(output)
+            else:
+                analysis.outputs.append(output)
             return output
         print "Adding %s to Analysis.__dict__" % func.func_name
         setattr(Analysis, func.func_name, add_output)
@@ -121,8 +124,6 @@ class Data(object):
 
 
 # Some example Converters for StreamingSeries
-
-
 
 class Series(Data):
 
