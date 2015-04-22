@@ -145,6 +145,9 @@ class Series(Data):
         """
         return Series(analysis)
 
+    def toImage(self, **kwargs):
+        return Image(self.analysis, **kwargs)
+
     def _get_dims(self, root):
         try:
             dims = open(os.path.join(root, Series.DIMS_FILE_NAME), 'r')
