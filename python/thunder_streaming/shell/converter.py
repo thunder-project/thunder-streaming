@@ -231,9 +231,9 @@ class MultiValue(Series):
     """
 
     @Data.converter
-    def getMultiValues(analysis, *valSizes):
+    def getMultiValues(analysis, sizes=[]):
         from numpy import cumsum
-        slices = [slice(x[0], x[1], 1) for x in zip([0] + list(cumsum(valSizes)), cumsum(valSizes))]
+        slices = [slice(x[0], x[1], 1) for x in zip([0] + list(cumsum(sizes)), cumsum(sizes))]
         return [Series(analysis, index=s) for s in slices]
 
 
