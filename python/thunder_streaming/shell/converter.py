@@ -122,6 +122,8 @@ class Data(object):
 
 # Some example Converters for StreamingSeries
 
+
+
 class Series(Data):
 
     DIMS_FILE_NAME = "dimensions.json"
@@ -129,9 +131,10 @@ class Series(Data):
     DTYPE = "dtype"
     DIMS_PATTERN = re.compile(DIMS_FILE_NAME)
 
-    def __init__(self, analysis, dtype="float16"):
+    def __init__(self, analysis, dtype="float16", index=None):
         Data.__init__(self, analysis)
         self.dtype = dtype
+        self.index = index
 
     @staticmethod
     @Data.converter
@@ -188,6 +191,11 @@ class Series(Data):
             bytes = bytes + series
         merged_series = np.frombuffer(bytes, dtype=dtype)
         reshaped_series = merged_series.reshape(-1, record_size)
+
+        if self.index:
+            # Slice out the relevant values from the reshaped series
+            reshaped_series = reshaped_series[:, self.index]
+
         return reshaped_series
 
     @Data.output
@@ -214,6 +222,19 @@ class Series(Data):
             self._saveBinaryToPath(fullPath, data)
         else:
             print "Path not specified in toFile."
+
+
+class MultiValue(Series):
+    """
+    Certain analyses will return multiple outputs (two different series objects, for example) which must be unpacked. The
+    MultiValue class provides the ability to "fork" Analysis outputs into multiple output pipelines
+    """
+
+    @Data.converter
+    def getMultiValues(analysis, *valSizes):
+        from numpy import cumsum
+        slices = [slice(x[0], x[1], 1) for x in zip([0] + list(cumsum(valSizes)), cumsum(valSizes))]
+        return [Series(analysis, index=s) for s in slices]
 
 
 class Image(Series):
@@ -288,4 +309,3 @@ class Image(Series):
         else:
             # Do dashboard stuff here
             lgn.image(data)
-
