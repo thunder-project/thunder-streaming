@@ -62,6 +62,7 @@ class DataProxy(object):
 
     def __init__(self, data_obj):
         self.data_obj = data_obj
+        self.data_obj.set_proxy(self)
 
     def update_reference(self, data_obj):
         self.data_obj = data_obj
@@ -171,9 +172,7 @@ class Series(Data):
         :return: A DataProxy pointing to a Series object
         """
         series = Series(analysis)
-        proxy = DataProxy(series)
-        series.set_proxy(proxy)
-        return proxy
+        return DataProxy(series)
 
     def toImage(self, **kwargs):
         """
@@ -275,7 +274,7 @@ class MultiValue(Series):
     def getMultiValues(analysis, sizes=[]):
         from numpy import cumsum
         slices = [slice(x[0], x[1], 1) for x in zip([0] + list(cumsum(sizes)), cumsum(sizes))]
-        return [Series(analysis, index=s) for s in slices]
+        return [DataProxy(Series(analysis, index=s)) for s in slices]
 
 
 class Image(Series):
@@ -296,9 +295,7 @@ class Image(Series):
         :return: An Image object
         """
         image = Image(analysis, dims, preslice)
-        proxy = DataProxy(image)
-        image.set_proxy(proxy)
-        return proxy
+        return DataProxy(image)
 
     def _convert(self, root, new_data):
         series = Series._convert(self, root, new_data)
