@@ -49,6 +49,26 @@ analysis1 = Analysis.ExampleAnalysis(param1=value1, param2=value2...).seriesToIm
 
 """
 
+class DataProxy(object):
+    """
+    Instead of an Analysis maintaining a fixed reference to a particular Data object, it should keep a reference to
+    a DataProxy, which can then be updated to point to different Data instances if necessary. This pattern enables
+    type conversion among Data instances after they've been added to an Analysis' 'outputs' list.
+
+    The motivating use-case for this class is of an Analysis which returns two outputs, a Series and an Image, but the
+    Analysis.getMultiValue converter assumes the return types are both Series. Converting the Series output to an Image
+    after getMultiValue is called will require Analysis' reference to be updated.
+    """
+
+    def __init__(self, data_obj):
+        self.data_obj = data_obj
+
+    def update_reference(self, data_obj):
+        self.data_obj = data_obj
+
+    def handle_new_data(self, root, new_data):
+        self.data_obj.handle_new_data(root, new_data)
+
 
 class Data(object):
     """
@@ -68,10 +88,15 @@ class Data(object):
 
     def __init__(self, analysis):
         self.analysis = analysis
+        # Keep a reference to the proxy that self.analysis maintains (set after initialization)
+        self.proxy = None
         # Output functions are added to output_funcs with the @output decorator
         self.output_funcs = {}
         # Transformation functions are applied to the input data before its passed to any output_funcs
         self.transformation_funcs = []
+
+    def set_proxy(self, proxy):
+        self.proxy = proxy
 
     @staticmethod
     def output(func):
@@ -142,12 +167,23 @@ class Series(Data):
     def toSeries(analysis):
         """
         :param analysis: The analysis whose raw output will be parsed and converted into an in-memory series
-        :return: A Series object
+        :return: A DataProxy pointing to a Series object
         """
-        return Series(analysis)
+        series = Series(analysis)
+        proxy = DataProxy(series)
+        series.set_proxy(proxy)
+        return proxy
 
     def toImage(self, **kwargs):
-        return Image(self.analysis, **kwargs)
+        """
+        Since Analysis objects only maintain references to proxies for Data objects, the toImage conversion need only
+        update that proxy's reference
+
+        Once a Series is converted into an Image, the original Series will no longer receive new data from the Analysis
+        """
+        image = Image(self.analysis, **kwargs)
+        self.proxy.update_reference(image)
+        return image
 
     def _get_dims(self, root):
         try:
@@ -258,7 +294,10 @@ class Image(Series):
         :param analysis: The analysis whose raw output will be parsed and converted into an in-memory image
         :return: An Image object
         """
-        return Image(analysis, dims, preslice)
+        image = Image(analysis, dims, preslice)
+        proxy = DataProxy(image)
+        image.set_proxy(proxy)
+        return proxy
 
     def _convert(self, root, new_data):
         series = Series._convert(self, root, new_data)
