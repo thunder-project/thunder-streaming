@@ -83,22 +83,6 @@ class Data(object):
     thread)
     """
 
-    @property
-    def identifier(self):
-        return self.__class__.__name__
-
-    def __init__(self, analysis):
-        self.analysis = analysis
-        # Keep a reference to the proxy that self.analysis maintains (set after initialization)
-        self.proxy = None
-        # Output functions are added to output_funcs with the @output decorator
-        self.output_funcs = {}
-        # Transformation functions are applied to the input data before its passed to any output_funcs
-        self.transformation_funcs = []
-
-    def set_proxy(self, proxy):
-        self.proxy = proxy
-
     @staticmethod
     def output(func):
         def add_to_output(self, *args, **kwargs):
@@ -131,9 +115,31 @@ class Data(object):
         setattr(Analysis, func.func_name, add_output)
         return func
 
+    def __init__(self, analysis):
+        self.analysis = analysis
+        # Keep a reference to the proxy that self.analysis maintains (set after initialization)
+        self.proxy = None
+        # Output functions are added to output_funcs with the @output decorator
+        self.output_funcs = {}
+        # Transformation functions are applied to the input data before its passed to any output_funcs
+        self.transformation_funcs = []
+
+    @property
+    def identifier(self):
+        return self.__class__.__name__
+
     @abstractmethod
     def _convert(self, root, new_data):
         return None
+
+    def _propagate_values(self, other, **kwargs):
+        for key, value in vars(self).items():
+            # Keyword arguments take precedent over attribute propagation
+            if key not in kwargs:
+                setattr(other, key, value)
+
+    def set_proxy(self, proxy):
+        self.proxy = proxy
 
     def handle_new_data(self, root, new_data):
         converted = self._convert(root, new_data)
@@ -182,6 +188,8 @@ class Series(Data):
         Once a Series is converted into an Image, the original Series will no longer receive new data from the Analysis
         """
         image = Image(self.analysis, **kwargs)
+        # Transfer all of self's attributes over the to the new Image
+        self._propagate_values(image, **kwargs)
         self.proxy.update_reference(image)
         return image
 
