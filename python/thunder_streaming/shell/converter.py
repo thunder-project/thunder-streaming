@@ -115,16 +115,17 @@ class Data(object):
     @staticmethod
     def converter(func):
         """
-        :param func: A function with a single parameter type, Analysis, that must return an instance of Data
+        :param func: A function with a single parameter type, Analysis, that must return an instance of DataProxy
         :return: The function after it's been added to Analysis' dict
         """
         def add_output(analysis, **kwargs):
-            output = func(analysis, **kwargs)
-            if isinstance(output, list):
-                analysis.outputs.extend(output)
+            output_proxies = func(analysis, **kwargs)
+            if isinstance(output_proxies, list):
+                analysis.outputs.extend(output_proxies)
+                return [proxy.data_obj for proxy in output_proxies]
             else:
-                analysis.outputs.append(output)
-            return output
+                analysis.outputs.append(output_proxies)
+                return output_proxies.data_obj
         print "Adding %s to Analysis.__dict__" % func.func_name
         setattr(Analysis, func.func_name, add_output)
         return func
