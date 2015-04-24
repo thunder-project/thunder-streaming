@@ -172,7 +172,6 @@ class SeriesBinnedRegressionAnalysis(tssc: ThunderStreamingContext, params: Anal
     val startIdx = totalSize - numRegressors
     val selectedKeys = featureKeys.zipWithIndex.filter{ case (f, idx) => selected == idx }.map(_._1)
     val selectedKey = selectedKeys(0)
-    println("selectedKeys: %d, featureKeys: %s".format(selectedKey, featureKeys.mkString(",")))
 
     val regressionStream = StatefulBinnedRegression.run(data, selectedKey, edges)
     regressionStream.checkpoint(data.interval)

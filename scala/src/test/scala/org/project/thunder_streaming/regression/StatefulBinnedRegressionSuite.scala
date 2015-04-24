@@ -15,9 +15,9 @@ import math.abs
 
 class StatefulBinnedRegressionSuite extends FunSuite with TestSuiteBase {
 
-  override def maxWaitTimeMillis = 10000
+  override def maxWaitTimeMillis = 5000
 
-  var numBatches = 100
+  var numBatches = 50
   var numPoints = 30
   var numKeys = 10
   var numBins = 5
@@ -91,13 +91,6 @@ class StatefulBinnedRegressionSuite extends FunSuite with TestSuiteBase {
     setup(getModel(featureKey, leftEdges))
     val centers = binCenters(leftEdges)
 
-    /*
-    output.foreach{ b =>
-      b.foreach{ case (idx, sc) =>
-          println("(%d, %s, wm: %f)".format(idx, sc.counterArray.mean.mkString(","),
-            sc.weightedMean(binCenters(leftEdges))))
-    }}
-    */
     output.last.filter { case (k, v) => k != featureKey }.foreach {
       case (k, v) => assertEqual(v.weightedMean(centers), centers(tunedBin), 0.1)
     }
@@ -116,7 +109,6 @@ class StatefulBinnedRegressionSuite extends FunSuite with TestSuiteBase {
     val firstDiff = weightedMeanDiff(output.take(1)(0))
     val lastDiff = weightedMeanDiff(output.last)
 
-    println("firstDiff: %f, lastDiff: %f".format(firstDiff, lastDiff))
     assert(firstDiff > lastDiff)
   }
 
@@ -140,8 +132,6 @@ class StatefulBinnedRegressionSuite extends FunSuite with TestSuiteBase {
 
     setupWithNoise(4)
     val worstR2 = getR2s(output).sum
-
-    println("perfectR2: %f, worseR2: %f, worstR2: %f".format(perfectR2, worseR2, worstR2))
 
     assert(perfectR2 > worseR2)
     assert(worseR2 > worstR2)

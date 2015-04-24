@@ -38,7 +38,6 @@ class StatefulBinnedRegression (
     val allBins = partialBins :+ (Double.MaxValue, partialBins.size)
     val minBins = features.map{ f => (f, allBins.filter{ case (n, idx) => f < n }) }
                           .map{ case (f, bins) => bins.map{ case (n, idx) => idx }.min }
-    println("minBins: %s".format(minBins.mkString(",")))
     minBins
   }
 
@@ -60,7 +59,6 @@ class StatefulBinnedRegression (
         case 0 => Array[Double]()
         case _ => batchFeatures
       }
-      println("features: %s".format(features.mkString(",")))
       binVector = featuresToBins(features, leftEdges)
     }
 
